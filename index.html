@@ -663,15 +663,70 @@
 <footer>&copy; 2026 Ocean Horizon &nbsp;&bull;&nbsp; Where the sea calls you home</footer>
 
 <script>
-  // Parallax on scroll
-  const layers = document.querySelectorAll('[data-speed]');
-  function onScroll() {
+  // ── Parallax: scroll depth + mouse-move tilt ──────────────────────────
+  //
+  // Each layer with data-speed gets:
+  //   translateY  → driven by scroll (deeper layers move less)
+  //   translate   → driven by mouse position (deeper layers move less)
+  //
+  // Everything is lerped each rAF frame so motion is silky-smooth.
+
+  const layers = [...document.querySelectorAll('[data-speed]')];
+
+  // Mouse target (normalised -1 → +1 from centre)
+  let mx = 0, my = 0;
+  // Smoothed mouse position
+  let smx = 0, smy = 0;
+
+  // Capture raw mouse
+  window.addEventListener('mousemove', e => {
+    mx = (e.clientX / window.innerWidth  - 0.5) * 2;
+    my = (e.clientY / window.innerHeight - 0.5) * 2;
+  }, { passive: true });
+
+  // Mobile: device orientation tilt
+  window.addEventListener('deviceorientation', e => {
+    if (e.gamma == null) return;
+    mx = Math.max(-1, Math.min(1, e.gamma / 25));
+    my = Math.max(-1, Math.min(1, (e.beta  - 30) / 30));
+  }, { passive: true });
+
+  // Depth config per layer — deeper layers get less mouse parallax
+  // data-speed already encodes scroll depth; mouse depth mirrors it.
+  // Mouse amplitude (px) = mouseAmp * (1 - scrollSpeed)
+  const MOUSE_AMP  = 28;   // max px shift at full tilt (foreground)
+  const LERP_MOUSE = 0.06; // smoothing factor (lower = more lag)
+
+  let raf;
+  function tick() {
+    // Smooth mouse
+    smx += (mx - smx) * LERP_MOUSE;
+    smy += (my - smy) * LERP_MOUSE;
+
     const sy = window.scrollY;
+
     layers.forEach(el => {
-      el.style.transform = `translateY(${sy * parseFloat(el.dataset.speed)}px)`;
+      const speed = parseFloat(el.dataset.speed);
+      // Scroll: faster speed = more vertical shift (foreground moves most)
+      const scrollY = sy * speed;
+      // Mouse: foreground (high speed) moves more, background less
+      const depth   = speed;          // 0 = static bg, 0.5 = mid, sky
+      const dx = smx * MOUSE_AMP * depth;
+      const dy = smy * MOUSE_AMP * depth * 0.5;
+
+      el.style.transform = `translate(${dx}px, ${scrollY + dy}px)`;
     });
+
+    raf = requestAnimationFrame(tick);
   }
-  window.addEventListener('scroll', onScroll, { passive: true });
+
+  tick();
+
+  // Pause when tab hidden to save resources
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) cancelAnimationFrame(raf);
+    else tick();
+  });
 </script>
 </body>
 </html>
