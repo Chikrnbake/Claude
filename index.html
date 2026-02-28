@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ocean Horizon</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Georgia', serif;
+      background: #0a1628;
+      overflow-x: hidden;
+    }
+
+    /* ─── SCENE WRAPPER ─────────────────────────────────────────── */
+    .scene {
+      position: relative;
+      width: 100%;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ─── SKY ───────────────────────────────────────────────────── */
+    .sky {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        180deg,
+        #b8d4f0 0%,
+        #c8e0f4 18%,
+        #d8eaf8 35%,
+        #e8f4fc 50%,
+        #c5e8f0 65%,
+        #90d4e8 80%,
+        #5ab8d4 100%
+      );
+      z-index: 0;
+    }
+
+    /* ─── CLOUDS ────────────────────────────────────────────────── */
+    .clouds {
+      position: absolute;
+      top: 5%;
+      left: 0;
+      width: 100%;
+      height: 30%;
+      z-index: 1;
+    }
+
+    .cloud {
+      position: absolute;
+      background: rgba(255,255,255,0.75);
+      border-radius: 50px;
+      filter: blur(6px);
+    }
+    .cloud::before, .cloud::after {
+      content: '';
+      position: absolute;
+      background: inherit;
+      border-radius: 50%;
+    }
+
+    .c1 { width: 180px; height: 35px; top: 10%; left: 8%; opacity:.8; }
+    .c1::before { width: 80px; height: 60px; bottom: 10px; left: 20px; }
+    .c1::after  { width: 60px; height: 45px; bottom: 10px; right: 25px; }
+
+    .c2 { width: 120px; height: 25px; top: 18%; left: 38%; opacity:.6; }
+    .c2::before { width: 55px; height: 40px; bottom: 8px; left: 15px; }
+    .c2::after  { width: 40px; height: 30px; bottom: 8px; right: 18px; }
+
+    .c3 { width: 200px; height: 30px; top: 8%; right: 10%; opacity:.7; }
+    .c3::before { width: 90px; height: 55px; bottom: 10px; left: 25px; }
+    .c3::after  { width: 65px; height: 42px; bottom: 10px; right: 30px; }
+
+    .c4 { width: 90px; height: 18px; top: 25%; left: 62%; opacity:.5; }
+    .c4::before { width: 40px; height: 28px; bottom: 5px; left: 10px; }
+    .c4::after  { width: 30px; height: 22px; bottom: 5px; right: 12px; }
+
+    /* ─── DISTANT MOUNTAINS ─────────────────────────────────────── */
+    .mountains-far {
+      position: absolute;
+      bottom: 38%;
+      left: 0;
+      width: 100%;
+      height: 28%;
+      z-index: 2;
+    }
+
+    .mountains-far svg { width: 100%; height: 100%; }
+
+    /* ─── NEAR MOUNTAINS / CLIFFS ───────────────────────────────── */
+    .mountains-near {
+      position: absolute;
+      bottom: 28%;
+      left: 0;
+      width: 100%;
+      height: 30%;
+      z-index: 3;
+    }
+    .mountains-near svg { width: 100%; height: 100%; }
+
+    /* ─── OCEAN LAYERS ──────────────────────────────────────────── */
+    .ocean {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 45%;
+      z-index: 4;
+    }
+
+    .wave-layer {
+      position: absolute;
+      left: -10%;
+      width: 120%;
+      will-change: transform;
+    }
+
+    .wave-bg {
+      bottom: 0;
+      height: 100%;
+      background: linear-gradient(180deg, #2ab8cc 0%, #1a90a8 40%, #107888 70%, #0a5c6e 100%);
+      border-radius: 50% 50% 0 0 / 12% 12% 0 0;
+    }
+
+    .wave-mid {
+      bottom: 28%;
+      height: 72%;
+      background: linear-gradient(180deg, #3eccd8 0%, #28aaba 50%, #1a8898 100%);
+      border-radius: 55% 45% 0 0 / 18% 14% 0 0;
+      transform-origin: center bottom;
+    }
+
+    .wave-front {
+      bottom: 42%;
+      height: 60%;
+      background: linear-gradient(180deg, #55dde8 0%, #38c4d4 40%, #22a8bc 100%);
+      border-radius: 60% 40% 0 0 / 22% 16% 0 0;
+      transform-origin: center bottom;
+    }
+
+    .wave-crest {
+      bottom: 52%;
+      height: 52%;
+      background: linear-gradient(180deg, #70eaf4 0%, #4ad4e4 35%, #2ebad0 100%);
+      border-radius: 65% 35% 0 0 / 28% 20% 0 0;
+      transform-origin: center bottom;
+    }
+
+    /* Sparkle / glint effects on water */
+    .sparkles {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 5;
+      overflow: hidden;
+    }
+
+    .sparkle {
+      position: absolute;
+      background: rgba(255,255,255,0.85);
+      transform: rotate(45deg);
+      animation: twinkle 2.5s ease-in-out infinite;
+    }
+
+    @keyframes twinkle {
+      0%, 100% { opacity: 0; transform: rotate(45deg) scale(0.5); }
+      50%       { opacity: 1; transform: rotate(45deg) scale(1); }
+    }
+
+    /* ─── SAILBOAT ──────────────────────────────────────────────── */
+    .sailboat {
+      position: absolute;
+      z-index: 5;
+      bottom: 50%;
+      left: 52%;
+      transform: translateX(-50%);
+      width: 80px;
+      height: 80px;
+    }
+    .sailboat svg { width: 100%; height: 100%; }
+
+    /* ─── FOREGROUND ROCKS & VEGETATION ────────────────────────── */
+    .foreground {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 35%;
+      z-index: 6;
+      pointer-events: none;
+    }
+    .foreground svg { width: 100%; height: 100%; }
+
+    /* ─── SCROLL CONTENT ────────────────────────────────────────── */
+    .content-section {
+      position: relative;
+      z-index: 10;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      padding: 80px 40px;
+      background: linear-gradient(180deg, transparent 0%, rgba(10,22,40,0.85) 20%, #0a1628 50%);
+    }
+
+    .content-section h2 {
+      color: #70eaf4;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      text-align: center;
+      letter-spacing: 0.08em;
+      text-shadow: 0 0 20px rgba(112,234,244,0.5);
+      margin-bottom: 1.5rem;
+    }
+
+    .content-section p {
+      color: rgba(200,230,240,0.85);
+      max-width: 600px;
+      line-height: 1.8;
+      text-align: center;
+      font-size: 1.1rem;
+    }
+
+    .nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 18px 40px;
+      background: rgba(10,22,40,0.15);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+
+    .nav-logo {
+      color: #fff;
+      font-size: 1.25rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .nav-links a {
+      color: rgba(255,255,255,0.85);
+      text-decoration: none;
+      margin-left: 30px;
+      font-size: 0.9rem;
+      letter-spacing: 0.06em;
+      transition: color 0.3s;
+    }
+    .nav-links a:hover { color: #70eaf4; }
+
+    .hero-text {
+      position: absolute;
+      bottom: 20%;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 7;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .hero-text h1 {
+      color: #fff;
+      font-size: clamp(2rem, 5vw, 4rem);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      text-shadow: 0 2px 20px rgba(0,80,100,0.5);
+    }
+
+    .hero-text p {
+      color: rgba(255,255,255,0.8);
+      font-size: clamp(0.85rem, 1.5vw, 1.1rem);
+      letter-spacing: 0.15em;
+      margin-top: 0.5rem;
+    }
+
+    .scroll-hint {
+      position: absolute;
+      bottom: 5%;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 8;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      color: rgba(255,255,255,0.6);
+      font-size: 0.75rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      animation: fadeUpDown 2s ease-in-out infinite;
+    }
+
+    .scroll-hint::after {
+      content: '';
+      display: block;
+      width: 1px;
+      height: 40px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.6), transparent);
+    }
+
+    @keyframes fadeUpDown {
+      0%, 100% { opacity: 0.5; transform: translateX(-50%) translateY(0); }
+      50%       { opacity: 1;   transform: translateX(-50%) translateY(6px); }
+    }
+
+    /* content cards */
+    .card-row {
+      display: flex;
+      gap: 30px;
+      margin-top: 50px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .card {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(112,234,244,0.25);
+      border-radius: 12px;
+      padding: 30px 28px;
+      width: 260px;
+      backdrop-filter: blur(6px);
+      transition: transform 0.3s, border-color 0.3s;
+    }
+    .card:hover { transform: translateY(-6px); border-color: rgba(112,234,244,0.6); }
+
+    .card-icon { font-size: 2rem; margin-bottom: 14px; }
+
+    .card h3 {
+      color: #70eaf4;
+      font-size: 1rem;
+      letter-spacing: 0.08em;
+      margin-bottom: 10px;
+    }
+
+    .card p { color: rgba(200,230,240,0.7); font-size: 0.9rem; line-height: 1.7; }
+
+    .cta-btn {
+      margin-top: 50px;
+      padding: 14px 42px;
+      border: 2px solid #70eaf4;
+      background: transparent;
+      color: #70eaf4;
+      font-size: 0.9rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: background 0.3s, color 0.3s;
+    }
+    .cta-btn:hover { background: #70eaf4; color: #0a1628; }
+
+    footer {
+      background: #050e1a;
+      color: rgba(200,230,240,0.4);
+      text-align: center;
+      padding: 30px;
+      font-size: 0.8rem;
+      letter-spacing: 0.1em;
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-logo">Ocean Horizon</div>
+  <div class="nav-links">
+    <a href="#">Explore</a>
+    <a href="#">Gallery</a>
+    <a href="#">Journey</a>
+    <a href="#">Contact</a>
+  </div>
+</nav>
+
+<!-- HERO SCENE -->
+<section class="scene" id="hero">
+
+  <!-- Sky -->
+  <div class="sky" data-parallax-speed="0.05"></div>
+
+  <!-- Clouds -->
+  <div class="clouds" data-parallax-speed="0.08">
+    <div class="cloud c1"></div>
+    <div class="cloud c2"></div>
+    <div class="cloud c3"></div>
+    <div class="cloud c4"></div>
+  </div>
+
+  <!-- Far mountains -->
+  <div class="mountains-far" data-parallax-speed="0.12">
+    <svg viewBox="0 0 1440 200" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Distant purple-grey peaks -->
+      <polygon points="0,200 0,120 60,90 130,60 200,80 280,40 360,70 420,50 500,30 570,55 640,25 710,45 780,20 850,42 920,30 1000,50 1080,22 1150,45 1220,35 1300,55 1370,40 1440,60 1440,200" fill="#7a8fb0" opacity="0.55"/>
+      <!-- Second range slightly darker -->
+      <polygon points="0,200 0,140 80,110 160,85 250,100 330,65 410,85 490,55 570,72 650,45 740,68 820,40 900,60 980,35 1060,55 1140,30 1230,50 1320,42 1440,68 1440,200" fill="#5a7090" opacity="0.7"/>
+      <!-- Snow caps -->
+      <polygon points="490,55 510,42 530,55" fill="rgba(255,255,255,0.5)"/>
+      <polygon points="640,25 660,10 680,25" fill="rgba(255,255,255,0.6)"/>
+      <polygon points="780,20 800,5 820,20" fill="rgba(255,255,255,0.65)"/>
+      <polygon points="1080,22 1100,8 1120,22" fill="rgba(255,255,255,0.55)"/>
+    </svg>
+  </div>
+
+  <!-- Near mountains / green cliffs -->
+  <div class="mountains-near" data-parallax-speed="0.2">
+    <svg viewBox="0 0 1440 220" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Left cliff mass -->
+      <polygon points="0,220 0,80 40,60 80,40 120,55 160,30 200,50 240,35 280,60 320,45 360,70 400,55 440,80 480,100 520,110 560,140 580,220" fill="#3d5c28"/>
+      <!-- Left cliff face highlight -->
+      <polygon points="0,220 0,80 40,60 80,40 90,55 60,80 30,110 10,160 0,220" fill="#2d4820" opacity="0.7"/>
+
+      <!-- Right cliff mass -->
+      <polygon points="860,220 880,110 920,90 960,70 1000,85 1040,55 1080,70 1120,45 1160,60 1200,40 1240,65 1280,50 1320,75 1380,90 1440,80 1440,220" fill="#3d5c28"/>
+      <!-- Right cliff face highlight -->
+      <polygon points="1440,220 1440,80 1410,70 1390,85 1370,110 1360,160 1440,220" fill="#2d4820" opacity="0.7"/>
+
+      <!-- Trees on left cliff -->
+      <g fill="#1e3a14">
+        <!-- Tree group 1 -->
+        <polygon points="100,55 108,30 116,55"/>
+        <polygon points="108,48 116,25 124,48"/>
+        <polygon points="120,52 128,28 136,52"/>
+        <polygon points="135,50 143,24 151,50"/>
+        <polygon points="150,55 158,30 166,55"/>
+        <!-- Tree group 2 -->
+        <polygon points="200,50 208,24 216,50"/>
+        <polygon points="215,48 223,22 231,48"/>
+        <polygon points="230,53 238,28 246,53"/>
+        <polygon points="245,51 253,26 261,51"/>
+        <!-- Tree group 3 -->
+        <polygon points="310,47 318,22 326,47"/>
+        <polygon points="325,45 333,20 341,45"/>
+        <polygon points="340,50 348,25 356,50"/>
+      </g>
+
+      <!-- Trees on right cliff -->
+      <g fill="#1e3a14">
+        <polygon points="960,72 968,47 976,72"/>
+        <polygon points="975,70 983,45 991,70"/>
+        <polygon points="990,68 998,43 1006,68"/>
+        <polygon points="1040,57 1048,32 1056,57"/>
+        <polygon points="1055,55 1063,30 1071,55"/>
+        <polygon points="1070,60 1078,35 1086,60"/>
+        <polygon points="1120,47 1128,22 1136,47"/>
+        <polygon points="1135,45 1143,20 1151,45"/>
+        <polygon points="1150,50 1158,25 1166,50"/>
+        <polygon points="1200,42 1208,17 1216,42"/>
+        <polygon points="1215,44 1223,19 1231,44"/>
+        <polygon points="1230,47 1238,22 1246,47"/>
+      </g>
+
+      <!-- Vegetation / bushes on left cliff base -->
+      <ellipse cx="60"  cy="78"  rx="22" ry="10" fill="#4a7a20" opacity="0.9"/>
+      <ellipse cx="90"  cy="72"  rx="18" ry="8"  fill="#5a8a28" opacity="0.8"/>
+      <ellipse cx="160" cy="65"  rx="20" ry="9"  fill="#4a7a20" opacity="0.9"/>
+      <ellipse cx="280" cy="60"  rx="25" ry="10" fill="#5a8a28" opacity="0.8"/>
+      <ellipse cx="380" cy="72"  rx="22" ry="9"  fill="#4a7a20" opacity="0.9"/>
+      <ellipse cx="450" cy="85"  rx="28" ry="11" fill="#5a8a28" opacity="0.85"/>
+
+      <!-- Wildflowers on left -->
+      <circle cx="50"  cy="75" r="4" fill="#e84882" opacity="0.9"/>
+      <circle cx="65"  cy="70" r="3" fill="#f0a020" opacity="0.9"/>
+      <circle cx="80"  cy="68" r="4" fill="#e84882" opacity="0.8"/>
+      <circle cx="95"  cy="72" r="3" fill="#60c840" opacity="0.9"/>
+      <circle cx="120" cy="68" r="4" fill="#f0a020" opacity="0.85"/>
+      <circle cx="175" cy="63" r="3" fill="#e84882" opacity="0.9"/>
+      <circle cx="190" cy="60" r="4" fill="#f0a020" opacity="0.9"/>
+      <circle cx="290" cy="57" r="4" fill="#e84882" opacity="0.85"/>
+      <circle cx="305" cy="55" r="3" fill="#60c840" opacity="0.9"/>
+      <circle cx="395" cy="68" r="4" fill="#f0a020" opacity="0.9"/>
+      <circle cx="460" cy="82" r="4" fill="#e84882" opacity="0.85"/>
+
+      <!-- Vegetation on right cliff base -->
+      <ellipse cx="920"  cy="88" rx="20" ry="9"  fill="#4a7a20" opacity="0.9"/>
+      <ellipse cx="980"  cy="82" rx="22" ry="9"  fill="#5a8a28" opacity="0.8"/>
+      <ellipse cx="1060" cy="70" rx="25" ry="10" fill="#4a7a20" opacity="0.9"/>
+      <ellipse cx="1160" cy="62" rx="22" ry="9"  fill="#5a8a28" opacity="0.85"/>
+      <ellipse cx="1270" cy="68" rx="28" ry="11" fill="#4a7a20" opacity="0.9"/>
+      <ellipse cx="1380" cy="80" rx="30" ry="12" fill="#5a8a28" opacity="0.85"/>
+
+      <!-- Wildflowers on right -->
+      <circle cx="930"  cy="84" r="4" fill="#e84882" opacity="0.9"/>
+      <circle cx="950"  cy="80" r="3" fill="#f0a020" opacity="0.9"/>
+      <circle cx="995"  cy="78" r="4" fill="#e84882" opacity="0.85"/>
+      <circle cx="1070" cy="67" r="3" fill="#60c840" opacity="0.9"/>
+      <circle cx="1085" cy="65" r="4" fill="#f0a020" opacity="0.9"/>
+      <circle cx="1170" cy="59" r="4" fill="#e84882" opacity="0.85"/>
+      <circle cx="1185" cy="57" r="3" fill="#60c840" opacity="0.9"/>
+      <circle cx="1280" cy="65" r="4" fill="#f0a020" opacity="0.9"/>
+      <circle cx="1390" cy="77" r="4" fill="#e84882" opacity="0.85"/>
+    </svg>
+  </div>
+
+  <!-- Ocean waves -->
+  <div class="ocean">
+    <div class="wave-layer wave-bg" data-parallax-speed="0.06"></div>
+    <div class="wave-layer wave-mid" data-parallax-speed="0.14"></div>
+    <div class="wave-layer wave-front" data-parallax-speed="0.22"></div>
+    <div class="wave-layer wave-crest" data-parallax-speed="0.30"></div>
+  </div>
+
+  <!-- Water sparkles -->
+  <div class="sparkles" id="sparkles"></div>
+
+  <!-- Sailboat -->
+  <div class="sailboat" data-parallax-speed="0.16">
+    <svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+      <!-- Mast -->
+      <line x1="40" y1="18" x2="40" y2="60" stroke="rgba(255,255,255,0.9)" stroke-width="1.5"/>
+      <!-- Main sail -->
+      <polygon points="40,18 40,55 14,55" fill="rgba(255,255,255,0.92)" stroke="rgba(200,220,240,0.5)" stroke-width="0.5"/>
+      <!-- Jib sail -->
+      <polygon points="40,22 40,50 58,50" fill="rgba(255,255,255,0.75)" stroke="rgba(200,220,240,0.5)" stroke-width="0.5"/>
+      <!-- Hull -->
+      <ellipse cx="40" cy="62" rx="22" ry="5" fill="rgba(255,255,255,0.9)"/>
+      <path d="M18,62 Q40,70 62,62" fill="rgba(230,240,250,0.8)" stroke="none"/>
+      <!-- Reflection on water -->
+      <line x1="40" y1="64" x2="40" y2="75" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+    </svg>
+  </div>
+
+  <!-- Hero text -->
+  <div class="hero-text">
+    <h1>Where Sky Meets Sea</h1>
+    <p>Discover the endless horizon</p>
+  </div>
+
+  <!-- Scroll hint -->
+  <div class="scroll-hint">Scroll</div>
+</section>
+
+<!-- CONTENT SECTION -->
+<section class="content-section">
+  <h2>The Endless Horizon</h2>
+  <p>Where turquoise waters kiss ancient cliffsides and the wind carries the scent of salt and pine. A place where time slows and the soul breathes freely.</p>
+
+  <div class="card-row">
+    <div class="card">
+      <div class="card-icon">&#9875;</div>
+      <h3>Set Sail</h3>
+      <p>Chart a course through pristine waters, guided by the stars and the rhythm of the tide.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">&#9968;</div>
+      <h3>Clifftop Trails</h3>
+      <p>Wind through ancient forests where wildflowers cling to rocky outcrops above the sea.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">&#9728;</div>
+      <h3>Open Skies</h3>
+      <p>Watch as golden light dances across the waves, painting the world in endless wonder.</p>
+    </div>
+  </div>
+
+  <button class="cta-btn">Begin the Journey</button>
+</section>
+
+<footer>
+  &copy; 2026 Ocean Horizon &nbsp;&bull;&nbsp; Where the sea calls you home
+</footer>
+
+<script>
+  // ─── SPARKLE GENERATION ──────────────────────────────────────────
+  (function generateSparkles() {
+    const container = document.getElementById('sparkles');
+    const count = 38;
+    for (let i = 0; i < count; i++) {
+      const s = document.createElement('div');
+      s.className = 'sparkle';
+      const size = Math.random() * 7 + 3;
+      s.style.cssText = `
+        width: ${size}px;
+        height: ${size}px;
+        left: ${Math.random() * 100}%;
+        top: ${40 + Math.random() * 55}%;
+        animation-delay: ${Math.random() * 3}s;
+        animation-duration: ${1.8 + Math.random() * 2.2}s;
+      `;
+      container.appendChild(s);
+    }
+  })();
+
+  // ─── PARALLAX ON SCROLL ──────────────────────────────────────────
+  const parallaxEls = document.querySelectorAll('[data-parallax-speed]');
+
+  let ticking = false;
+  let lastScroll = 0;
+
+  function applyParallax() {
+    const scrollY = window.scrollY;
+
+    parallaxEls.forEach(el => {
+      const speed  = parseFloat(el.dataset.parallaxSpeed);
+      const offset = scrollY * speed;
+      el.style.transform = `translateY(${offset}px)`;
+    });
+
+    // Extra: wave layers also sway slightly on scroll for organic motion
+    const waveElements = document.querySelectorAll('.wave-layer');
+    waveElements.forEach((wave, idx) => {
+      const speed  = parseFloat(wave.dataset.parallaxSpeed || 0.1);
+      const shift  = scrollY * speed;
+      // slight horizontal drift on alternating layers
+      const drift = idx % 2 === 0
+        ? Math.sin(scrollY * 0.008) * 12
+        : Math.cos(scrollY * 0.008) * 10;
+      wave.style.transform = `translateY(${shift}px) translateX(${drift}px)`;
+    });
+
+    ticking = false;
+  }
+
+  window.addEventListener('scroll', () => {
+    if (!ticking) {
+      requestAnimationFrame(applyParallax);
+      ticking = true;
+    }
+  }, { passive: true });
+
+  // ─── AMBIENT WAVE ANIMATION (CSS keyframe fallback) ─────────────
+  // Gentle continuous sway even without scrolling
+  let t = 0;
+  const waveLayers = document.querySelectorAll('.wave-layer');
+
+  function ambientWave() {
+    t += 0.008;
+    const scrollY = window.scrollY;
+    waveLayers.forEach((wave, idx) => {
+      const speed = parseFloat(wave.dataset.parallaxSpeed || 0.1);
+      const parallaxShift = scrollY * speed;
+      const amplitude = [6, 9, 12, 10][idx] ?? 8;
+      const freq      = [1, 0.8, 0.6, 0.9][idx] ?? 1;
+      const drift = Math.sin(t * freq + idx * 0.9) * amplitude;
+      const rise  = Math.cos(t * freq * 0.7 + idx) * 4;
+      wave.style.transform = `translateY(${parallaxShift + rise}px) translateX(${drift}px)`;
+    });
+    requestAnimationFrame(ambientWave);
+  }
+
+  ambientWave();
+</script>
+</body>
+</html>
