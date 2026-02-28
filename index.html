@@ -7,85 +7,48 @@
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
     html { scroll-behavior: smooth; }
-    body { font-family: 'Georgia', serif; background: #030d1a; overflow-x: hidden; }
+    body { font-family: 'Georgia', serif; background: #050e22; overflow-x: hidden; }
 
-    .scene { position: relative; width: 100%; height: 100vh; overflow: hidden; transform: scaleX(-1); }
+    .scene { position: relative; width: 100%; height: 100vh; overflow: hidden; }
 
-    /* Vivid cyan sky */
     .sky {
       position: absolute; inset: 0;
       background: linear-gradient(180deg,
-        #1595cc 0%, #18a8df 20%, #20c0ec 45%,
-        #28d4f4 65%, #35e0f8 80%, #40e8fa 100%);
+        #060c24 0%,  #081530 18%,
+        #0a2840 38%, #0c5050 56%,
+        #0d7060 72%, #0e9075 86%, #10a882 100%);
       z-index: 0;
     }
 
     .layer { position: absolute; left: 0; width: 100%; will-change: transform; }
     .layer svg { display: block; width: 100%; }
 
-    .layer-clouds      { top: 2%;    height: 40%; z-index: 1; }
-    .layer-mtn-far     { bottom: 34%; height: 42%; z-index: 2; }
-    .layer-mtn-near    { bottom: 26%; height: 48%; z-index: 3; }
-    .layer-mist        { bottom: 38%; height: 14%; z-index: 4; }
-    .layer-ocean       { bottom: 0;   height: 50%; z-index: 5; }
-    .layer-foreground  { bottom: 0;   height: 58%; z-index: 8; }
-
-    .wave-layer {
-      position: absolute; left: -5%; width: 110%;
-      will-change: transform; z-index: 6;
-    }
-
-    .sparkles-container {
-      position: absolute; bottom: 0; left: 0;
-      width: 100%; height: 50%;
-      z-index: 7; pointer-events: none; overflow: hidden;
-    }
-
-    .sp {
-      position: absolute; background: white;
-      transform: rotate(45deg);
-      animation: sp-anim var(--d) ease-in-out infinite var(--delay);
-    }
-    @keyframes sp-anim {
-      0%,100% { opacity: 0; transform: rotate(45deg) scale(0.2); }
-      50%      { opacity: var(--op, 0.9); transform: rotate(45deg) scale(1); }
-    }
-
-    .sailboat {
-      position: absolute; z-index: 7;
-      bottom: 50%; left: 60%;
-      width: 52px; height: 68px;
-      transform: translateX(-50%);
-      will-change: transform;
-    }
-
     /* Nav */
     .nav {
       position: fixed; top: 0; left: 0; right: 0; z-index: 100;
       display: flex; justify-content: space-between; align-items: center;
       padding: 18px 40px;
-      background: rgba(0,15,40,0.1);
-      backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+      background: rgba(5,14,34,0.12); backdrop-filter: blur(10px);
     }
     .nav-logo { color: #fff; font-size: 1.2rem; letter-spacing: 0.14em; text-transform: uppercase; }
-    .nav-links a { color: rgba(255,255,255,0.9); text-decoration: none; margin-left: 28px; font-size: 0.88rem; letter-spacing: 0.07em; transition: color 0.3s; }
-    .nav-links a:hover { color: #80f4ff; }
+    .nav-links a { color: rgba(255,255,255,0.85); text-decoration: none; margin-left: 28px; font-size: 0.88rem; letter-spacing: 0.07em; transition: color 0.3s; }
+    .nav-links a:hover { color: #70f0d8; }
 
     .hero-text {
-      position: absolute; bottom: 20%; left: 50%;
-      transform: translateX(-50%) scaleX(-1); z-index: 9;
+      position: absolute; bottom: 22%; left: 68%;
+      transform: translateX(-50%); z-index: 9;
       text-align: center; white-space: nowrap;
     }
-    .hero-text h1 { color: #fff; font-size: clamp(2rem,5vw,4rem); letter-spacing: 0.22em; text-transform: uppercase; text-shadow: 0 2px 40px rgba(0,80,160,0.35); }
-    .hero-text p  { color: rgba(255,255,255,0.82); font-size: clamp(0.85rem,1.5vw,1.05rem); letter-spacing: 0.16em; margin-top: 0.6rem; }
+    .hero-text h1 { color: #fff; font-size: clamp(1.8rem,4vw,3.5rem); letter-spacing: 0.2em; text-transform: uppercase; text-shadow: 0 2px 40px rgba(0,80,100,0.5); }
+    .hero-text p  { color: rgba(190,255,240,0.8); font-size: clamp(0.8rem,1.4vw,1rem); letter-spacing: 0.16em; margin-top: 0.6rem; }
 
     .scroll-hint {
-      position: absolute; bottom: 5%; left: 50%; transform: translateX(-50%) scaleX(-1);
+      position: absolute; bottom: 5%; left: 68%; transform: translateX(-50%);
       z-index: 9; display: flex; flex-direction: column; align-items: center; gap: 8px;
-      color: rgba(255,255,255,0.65); font-size: 0.72rem; letter-spacing: 0.22em;
-      text-transform: uppercase; animation: fadeUD 2s ease-in-out infinite;
+      color: rgba(190,255,240,0.6); font-size: 0.72rem; letter-spacing: 0.22em; text-transform: uppercase;
+      animation: fadeUD 2s ease-in-out infinite;
     }
-    .scroll-hint::after { content: ''; display: block; width: 1px; height: 38px; background: linear-gradient(180deg,rgba(255,255,255,0.65),transparent); }
+    .scroll-hint::after { content: ''; display: block; width: 1px; height: 38px; background: linear-gradient(180deg, rgba(190,255,240,0.6), transparent); }
     @keyframes fadeUD {
       0%,100% { opacity: 0.45; transform: translateX(-50%) translateY(0); }
       50%      { opacity: 1;    transform: translateX(-50%) translateY(7px); }
@@ -96,22 +59,19 @@
       position: relative; z-index: 10; min-height: 100vh;
       display: flex; align-items: center; justify-content: center; flex-direction: column;
       padding: 80px 40px;
-      background: linear-gradient(180deg, transparent 0%, rgba(3,13,26,0.92) 12%, #030d1a 40%);
+      background: linear-gradient(180deg, transparent 0%, rgba(5,14,34,0.94) 12%, #050e22 40%);
     }
-    .content-section h2 { color: #40e8f8; font-size: clamp(1.8rem,4vw,3rem); text-align: center; letter-spacing: 0.1em; text-shadow: 0 0 35px rgba(64,232,248,0.55); margin-bottom: 1.5rem; }
-    .content-section > p { color: rgba(190,240,255,0.82); max-width: 580px; line-height: 1.85; text-align: center; font-size: 1.08rem; }
-
+    .content-section h2 { color: #18d8b0; font-size: clamp(1.8rem,4vw,3rem); text-align: center; letter-spacing: 0.1em; text-shadow: 0 0 35px rgba(24,216,176,0.45); margin-bottom: 1.5rem; }
+    .content-section > p { color: rgba(180,240,220,0.82); max-width: 580px; line-height: 1.85; text-align: center; font-size: 1.08rem; }
     .card-row { display: flex; gap: 28px; margin-top: 48px; flex-wrap: wrap; justify-content: center; }
-    .card { background: rgba(255,255,255,0.04); border: 1px solid rgba(64,232,248,0.22); border-radius: 14px; padding: 28px 26px; width: 255px; backdrop-filter: blur(8px); transition: transform 0.35s, border-color 0.35s, box-shadow 0.35s; }
-    .card:hover { transform: translateY(-7px); border-color: rgba(64,232,248,0.55); box-shadow: 0 8px 30px rgba(64,232,248,0.15); }
+    .card { background: rgba(255,255,255,0.04); border: 1px solid rgba(24,216,176,0.22); border-radius: 14px; padding: 28px 26px; width: 255px; backdrop-filter: blur(8px); transition: transform 0.35s, border-color 0.35s, box-shadow 0.35s; }
+    .card:hover { transform: translateY(-7px); border-color: rgba(24,216,176,0.55); box-shadow: 0 8px 30px rgba(24,216,176,0.15); }
     .card-icon { font-size: 1.9rem; margin-bottom: 12px; }
-    .card h3 { color: #40e8f8; font-size: 0.98rem; letter-spacing: 0.09em; margin-bottom: 9px; }
-    .card p  { color: rgba(190,240,255,0.68); font-size: 0.88rem; line-height: 1.72; }
-
-    .cta-btn { margin-top: 48px; padding: 13px 40px; border: 2px solid #40e8f8; background: transparent; color: #40e8f8; font-size: 0.88rem; letter-spacing: 0.15em; text-transform: uppercase; cursor: pointer; border-radius: 5px; transition: background 0.3s, color 0.3s, box-shadow 0.3s; }
-    .cta-btn:hover { background: #40e8f8; color: #030d1a; box-shadow: 0 0 25px rgba(64,232,248,0.4); }
-
-    footer { background: #020810; color: rgba(190,240,255,0.32); text-align: center; padding: 28px; font-size: 0.78rem; letter-spacing: 0.12em; }
+    .card h3 { color: #18d8b0; font-size: 0.98rem; letter-spacing: 0.09em; margin-bottom: 9px; }
+    .card p  { color: rgba(180,240,220,0.68); font-size: 0.88rem; line-height: 1.72; }
+    .cta-btn { margin-top: 48px; padding: 13px 40px; border: 2px solid #18d8b0; background: transparent; color: #18d8b0; font-size: 0.88rem; letter-spacing: 0.15em; text-transform: uppercase; cursor: pointer; border-radius: 5px; transition: background 0.3s, color 0.3s, box-shadow 0.3s; }
+    .cta-btn:hover { background: #18d8b0; color: #050e22; box-shadow: 0 0 25px rgba(24,216,176,0.4); }
+    footer { background: #030a18; color: rgba(180,240,220,0.3); text-align: center; padding: 28px; font-size: 0.78rem; letter-spacing: 0.12em; }
   </style>
 </head>
 <body>
@@ -124,476 +84,497 @@
 </nav>
 
 <section class="scene" id="hero">
-
-  <!-- Sky -->
   <div class="sky"></div>
 
-  <!-- ── WISPY CLOUDS ── -->
-  <div class="layer layer-clouds" data-speed="0.06">
-    <svg viewBox="0 0 1440 220" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- ── STARS ── -->
+  <div class="layer" style="top:0;height:60%;z-index:1;pointer-events:none;">
+    <svg viewBox="0 0 1440 540" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Stars concentrated on right (open sky) side -->
+      <circle cx="830"  cy="42"  r="1.2" fill="white" opacity="0.9"/>
+      <circle cx="886"  cy="26"  r="0.9" fill="white" opacity="0.8"/>
+      <circle cx="928"  cy="60"  r="1.1" fill="white" opacity="0.85"/>
+      <circle cx="968"  cy="36"  r="0.8" fill="white" opacity="0.75"/>
+      <circle cx="1006" cy="54"  r="1.2" fill="white" opacity="0.9"/>
+      <circle cx="1048" cy="20"  r="0.9" fill="white" opacity="0.8"/>
+      <circle cx="1088" cy="46"  r="1.0" fill="white" opacity="0.85"/>
+      <circle cx="1128" cy="33"  r="1.2" fill="white" opacity="0.9"/>
+      <circle cx="1168" cy="64"  r="0.8" fill="white" opacity="0.75"/>
+      <circle cx="1208" cy="27"  r="1.1" fill="white" opacity="0.85"/>
+      <circle cx="1248" cy="49"  r="0.9" fill="white" opacity="0.8"/>
+      <circle cx="1290" cy="36"  r="1.2" fill="white" opacity="0.9"/>
+      <circle cx="1330" cy="70"  r="0.8" fill="white" opacity="0.75"/>
+      <circle cx="1368" cy="44"  r="1.0" fill="white" opacity="0.85"/>
+      <circle cx="1408" cy="28"  r="1.2" fill="white" opacity="0.9"/>
+      <circle cx="856"  cy="94"  r="0.8" fill="white" opacity="0.7"/>
+      <circle cx="916"  cy="84"  r="1.0" fill="white" opacity="0.8"/>
+      <circle cx="978"  cy="99"  r="0.9" fill="white" opacity="0.75"/>
+      <circle cx="1036" cy="86"  r="0.8" fill="white" opacity="0.7"/>
+      <circle cx="1096" cy="104" r="1.1" fill="white" opacity="0.82"/>
+      <circle cx="1158" cy="78"  r="0.8" fill="white" opacity="0.7"/>
+      <circle cx="1220" cy="97"  r="1.0" fill="white" opacity="0.8"/>
+      <circle cx="1278" cy="80"  r="0.9" fill="white" opacity="0.75"/>
+      <circle cx="1338" cy="106" r="0.8" fill="white" opacity="0.7"/>
+      <circle cx="1396" cy="88"  r="1.1" fill="white" opacity="0.82"/>
+      <circle cx="876"  cy="134" r="0.8" fill="white" opacity="0.65"/>
+      <circle cx="944"  cy="122" r="1.0" fill="white" opacity="0.74"/>
+      <circle cx="1010" cy="140" r="0.8" fill="white" opacity="0.65"/>
+      <circle cx="1072" cy="126" r="0.9" fill="white" opacity="0.7"/>
+      <circle cx="1136" cy="146" r="0.8" fill="white" opacity="0.65"/>
+      <circle cx="1196" cy="130" r="1.0" fill="white" opacity="0.74"/>
+      <circle cx="1258" cy="150" r="0.8" fill="white" opacity="0.65"/>
+      <circle cx="1318" cy="136" r="0.9" fill="white" opacity="0.7"/>
+      <circle cx="1380" cy="154" r="0.8" fill="white" opacity="0.65"/>
+      <circle cx="1436" cy="138" r="1.0" fill="white" opacity="0.74"/>
+      <!-- A few stars peeking above the cliff on the left -->
+      <circle cx="400" cy="28"  r="0.8" fill="white" opacity="0.48"/>
+      <circle cx="465" cy="52"  r="0.9" fill="white" opacity="0.52"/>
+      <circle cx="535" cy="22"  r="0.7" fill="white" opacity="0.44"/>
+      <circle cx="608" cy="44"  r="0.8" fill="white" opacity="0.5"/>
+      <circle cx="678" cy="18"  r="0.9" fill="white" opacity="0.54"/>
+      <circle cx="748" cy="40"  r="0.7" fill="white" opacity="0.48"/>
+    </svg>
+  </div>
+
+  <!-- ── VAPOR TRAIL / CONTRAIL ── -->
+  <div class="layer" style="top:0;height:45%;z-index:2;pointer-events:none;">
+    <svg viewBox="0 0 1440 405" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <filter id="wb"><feGaussianBlur stdDeviation="3.5"/></filter>
-        <filter id="wb2"><feGaussianBlur stdDeviation="6"/></filter>
+        <filter id="cb1"><feGaussianBlur stdDeviation="2.5"/></filter>
+        <filter id="cb2"><feGaussianBlur stdDeviation="5"/></filter>
       </defs>
-      <!-- Left wisps -->
-      <g filter="url(#wb)" opacity="0.8">
-        <path d="M55,42 Q120,26 205,40 Q258,47 290,35 Q335,22 395,38" stroke="rgba(255,255,255,0.72)" stroke-width="9" fill="none" stroke-linecap="round"/>
-        <path d="M75,54 Q155,40 228,50 Q268,56 310,45" stroke="rgba(255,255,255,0.5)" stroke-width="5" fill="none" stroke-linecap="round"/>
-        <path d="M340,33 Q376,18 412,28 Q434,35 424,50 Q414,60 392,53" stroke="rgba(255,255,255,0.58)" stroke-width="5" fill="none" stroke-linecap="round"/>
-        <path d="M418,25 Q462,11 494,23 Q515,31 504,45" stroke="rgba(255,255,255,0.44)" stroke-width="4" fill="none" stroke-linecap="round"/>
+      <!-- Sweeping contrail from upper-center-right, feathering out -->
+      <g filter="url(#cb2)" opacity="0.55">
+        <path d="M 580,22 Q 660,16 730,32 Q 790,45 840,72" stroke="rgba(210,235,255,0.7)" stroke-width="7" fill="none" stroke-linecap="round"/>
       </g>
-      <!-- Mid wisps swirly -->
-      <g filter="url(#wb)" opacity="0.68">
-        <path d="M475,28 Q545,10 618,20 Q664,28 686,17 Q728,5 768,16 Q810,26 828,16" stroke="rgba(255,255,255,0.68)" stroke-width="8" fill="none" stroke-linecap="round"/>
-        <path d="M498,40 Q562,26 636,37 Q678,44 698,33" stroke="rgba(255,255,255,0.48)" stroke-width="5" fill="none" stroke-linecap="round"/>
-        <path d="M718,22 Q752,7 784,16 Q804,24 793,37 Q780,50 764,43 Q748,36 754,26" stroke="rgba(255,255,255,0.52)" stroke-width="4" fill="none" stroke-linecap="round"/>
-      </g>
-      <!-- Right wisps -->
-      <g filter="url(#wb)" opacity="0.73">
-        <path d="M845,18 Q922,3 1005,13 Q1065,21 1108,9 Q1155,-2 1205,8 Q1265,18 1308,10 Q1358,2 1408,13" stroke="rgba(255,255,255,0.65)" stroke-width="8" fill="none" stroke-linecap="round"/>
-        <path d="M875,30 Q955,16 1028,26 Q1078,34 1118,22" stroke="rgba(255,255,255,0.46)" stroke-width="5" fill="none" stroke-linecap="round"/>
-        <path d="M1098,16 Q1152,2 1204,13 Q1236,21 1224,34 Q1210,45 1194,37" stroke="rgba(255,255,255,0.48)" stroke-width="4" fill="none" stroke-linecap="round"/>
-      </g>
-      <!-- Soft puff right -->
-      <g filter="url(#wb2)" opacity="0.6">
-        <ellipse cx="1335" cy="68" rx="88" ry="34" fill="rgba(255,255,255,0.58)"/>
-        <ellipse cx="1362" cy="53" rx="58" ry="27" fill="rgba(255,255,255,0.65)"/>
-        <ellipse cx="1302" cy="60" rx="48" ry="21" fill="rgba(255,255,255,0.52)"/>
-      </g>
-      <!-- Small puff left-center -->
-      <g filter="url(#wb2)" opacity="0.48">
-        <ellipse cx="445" cy="78" rx="58" ry="21" fill="rgba(255,255,255,0.5)"/>
-        <ellipse cx="465" cy="66" rx="38" ry="19" fill="rgba(255,255,255,0.55)"/>
+      <g filter="url(#cb1)" opacity="0.72">
+        <path d="M 620,28 Q 700,20 770,38 Q 830,52 880,82 Q 920,108 942,138" stroke="rgba(210,235,255,0.65)" stroke-width="5" fill="none" stroke-linecap="round"/>
+        <path d="M 638,32 Q 695,22 752,38 Q 800,52 840,72" stroke="rgba(210,235,255,0.48)" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <path d="M 660,38 Q 715,28 770,44 Q 810,56 848,76" stroke="rgba(200,228,252,0.4)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <!-- Wispy feather offshoots -->
+        <path d="M 680,36 Q 710,24 738,32" stroke="rgba(200,228,252,0.42)" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <path d="M 720,44 Q 750,30 778,40" stroke="rgba(200,228,252,0.38)" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+        <path d="M 760,56 Q 790,42 818,52" stroke="rgba(200,228,252,0.35)" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+        <path d="M 800,72 Q 828,56 856,66" stroke="rgba(200,228,252,0.32)" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+        <path d="M 840,90 Q 866,74 892,84" stroke="rgba(200,228,252,0.3)" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+        <!-- Fade-off tail heading upper-left -->
+        <path d="M 585,20 Q 555,12 528,18 Q 508,22 498,16" stroke="rgba(210,235,255,0.3)" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <path d="M 575,24 Q 548,16 522,22" stroke="rgba(210,235,255,0.22)" stroke-width="2" fill="none" stroke-linecap="round"/>
       </g>
     </svg>
   </div>
 
-  <!-- ── FAR MOUNTAINS ── -->
-  <div class="layer layer-mtn-far" data-speed="0.1">
-    <svg viewBox="0 0 1440 280" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <filter id="mf"><feGaussianBlur stdDeviation="4"/></filter>
-        <linearGradient id="gf1" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#8858d0"/><stop offset="55%" stop-color="#5a3898"/><stop offset="100%" stop-color="#38267a"/>
-        </linearGradient>
-        <linearGradient id="gf2" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#9868e0"/><stop offset="48%" stop-color="#6448b0"/><stop offset="100%" stop-color="#38267a"/>
-        </linearGradient>
-        <linearGradient id="gg1" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#3c7242"/><stop offset="100%" stop-color="#1e3c22"/>
-        </linearGradient>
-      </defs>
-      <!-- Ghost headland -->
-      <polygon points="0,280 0,175 110,148 240,132 400,142 560,122 720,132 880,112 1040,125 1200,115 1360,128 1440,118 1440,280" fill="#9878d0" opacity="0.32" filter="url(#mf)"/>
-      <!-- Main purple range -->
-      <polygon points="0,280 0,198 85,168 168,142 255,158 345,118 435,145 525,104 618,130 712,92 808,116 904,88 1000,108 1098,82 1195,105 1295,85 1390,108 1440,94 1440,280" fill="url(#gf1)"/>
-      <!-- Second purple layer -->
-      <polygon points="0,280 0,218 65,195 148,172 235,188 325,148 415,170 505,136 598,158 692,124 788,148 885,116 980,138 1078,110 1175,135 1275,112 1372,132 1440,116 1440,280" fill="url(#gf2)" opacity="0.7"/>
-      <!-- Green forest belt -->
-      <polygon points="0,280 0,232 55,215 125,202 210,215 295,192 380,210 465,186 550,205 635,180 718,200 802,175 888,195 975,172 1060,190 1148,168 1235,186 1325,165 1440,175 1440,280" fill="url(#gg1)" opacity="0.88"/>
-      <!-- Snow caps -->
-      <polygon points="525,104 540,86 556,104" fill="rgba(255,255,255,0.52)"/>
-      <polygon points="712,92 728,74 744,92"  fill="rgba(255,255,255,0.58)"/>
-      <polygon points="904,88 921,68 938,88"  fill="rgba(255,255,255,0.62)"/>
-      <polygon points="1098,82 1116,62 1134,82" fill="rgba(255,255,255,0.5)"/>
-      <polygon points="1295,85 1312,66 1329,85" fill="rgba(255,255,255,0.46)"/>
-    </svg>
-  </div>
-
-  <!-- ── NEAR MOUNTAINS / CLIFFS ── -->
-  <div class="layer layer-mtn-near" data-speed="0.18">
-    <svg viewBox="0 0 1440 310" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="ps" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#5c3a90"/><stop offset="100%" stop-color="#2c1850"/>
-        </linearGradient>
-        <linearGradient id="gs" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#3c6a32"/><stop offset="100%" stop-color="#1e3c20"/>
-        </linearGradient>
-      </defs>
-
-      <!-- Left cliff purple back -->
-      <polygon points="0,310 0,118 62,93 135,68 208,84 278,53 350,73 420,53 474,70 525,92 562,125 578,165 578,310" fill="url(#ps)"/>
-      <!-- Left green overlay -->
-      <polygon points="0,310 0,172 52,148 124,126 205,140 282,108 355,126 424,110 472,128 522,152 552,182 562,212 562,310" fill="url(#gs)" opacity="0.9"/>
-      <!-- Left dark cliff face -->
-      <polygon points="0,310 0,118 42,105 72,132 82,168 62,202 32,242 0,310" fill="#0e1020" opacity="0.78"/>
-      <!-- Rock face details left -->
-      <polygon points="22,142 44,120 58,142 48,164 26,158" fill="#2a1a42" opacity="0.5"/>
-      <polygon points="0,310 0,205 32,182 72,198 90,225 80,262 50,288 0,310" fill="#151022"/>
-
-      <!-- Right cliff purple back -->
-      <polygon points="862,310 872,148 924,118 996,93 1068,110 1138,78 1208,96 1278,70 1334,88 1384,106 1440,93 1440,310" fill="url(#ps)"/>
-      <!-- Right green overlay -->
-      <polygon points="882,310 892,192 944,160 1014,138 1082,155 1152,120 1222,138 1292,116 1352,136 1440,128 1440,310" fill="url(#gs)" opacity="0.88"/>
-      <!-- Right dark cliff face -->
-      <polygon points="1440,310 1440,93 1408,108 1394,140 1398,176 1418,218 1440,310" fill="#0e1020" opacity="0.78"/>
-
-      <!-- Trees left -->
-      <g fill="#1a3018">
-        <polygon points="92,128 99,104 106,128"/><polygon points="104,126 111,102 118,126"/>
-        <polygon points="116,124 124,100 132,124"/><polygon points="130,128 138,104 146,128"/>
-        <polygon points="145,126 153,102 161,126"/>
-        <polygon points="204,106 212,80 220,106"/><polygon points="218,104 226,78 234,104"/>
-        <polygon points="232,108 240,82 248,108"/><polygon points="246,106 254,80 262,106"/>
-        <polygon points="315,90 324,64 333,90"/><polygon points="330,88 339,62 348,88"/>
-        <polygon points="346,92 355,66 364,92"/>
-        <polygon points="402,86 411,60 420,86"/><polygon points="418,84 427,58 436,84"/>
-        <polygon points="434,88 443,62 452,88"/>
-      </g>
-      <!-- Trees right -->
-      <g fill="#1a3018">
-        <polygon points="934,116 941,92 948,116"/><polygon points="947,114 954,90 961,114"/>
-        <polygon points="962,118 969,94 976,118"/>
-        <polygon points="1014,103 1022,77 1030,103"/><polygon points="1028,101 1036,75 1044,101"/>
-        <polygon points="1043,105 1051,79 1059,105"/>
-        <polygon points="1136,93 1144,67 1152,93"/><polygon points="1151,91 1159,65 1167,91"/>
-        <polygon points="1166,95 1174,69 1182,95"/>
-        <polygon points="1224,86 1232,60 1240,86"/><polygon points="1238,84 1246,58 1254,84"/>
-        <polygon points="1252,88 1260,62 1268,88"/>
-        <polygon points="1324,103 1332,77 1340,103"/><polygon points="1338,101 1346,75 1354,101"/>
-        <polygon points="1352,105 1360,79 1368,105"/>
-      </g>
-
-      <!-- Shrubs left -->
-      <ellipse cx="58"  cy="158" rx="25" ry="12" fill="#2a5520" opacity="0.9"/>
-      <ellipse cx="94"  cy="150" rx="20" ry="10" fill="#367028" opacity="0.85"/>
-      <ellipse cx="135" cy="143" rx="22" ry="10" fill="#2a5520" opacity="0.9"/>
-      <ellipse cx="224" cy="128" rx="28" ry="12" fill="#367028" opacity="0.85"/>
-      <ellipse cx="296" cy="122" rx="24" ry="11" fill="#2a5520" opacity="0.9"/>
-      <ellipse cx="385" cy="115" rx="30" ry="13" fill="#367028" opacity="0.85"/>
-      <ellipse cx="455" cy="128" rx="26" ry="12" fill="#2a5520" opacity="0.9"/>
-
-      <!-- Flowers left - vivid -->
-      <circle cx="62"  cy="150" r="4.5" fill="#c050b0"/><circle cx="78"  cy="145" r="3.5" fill="#f08020"/>
-      <circle cx="98"  cy="142" r="4.5" fill="#c050b0"/><circle cx="143" cy="136" r="3.5" fill="#50d030"/>
-      <circle cx="158" cy="133" r="4"   fill="#f08020"/><circle cx="238" cy="120" r="4.5" fill="#c050b0"/>
-      <circle cx="253" cy="118" r="3.5" fill="#50d030"/><circle cx="304" cy="115" r="4"   fill="#f08020"/>
-      <circle cx="404" cy="109" r="4.5" fill="#c050b0"/><circle cx="464" cy="121" r="4"   fill="#f08020"/>
-
-      <!-- Shrubs right -->
-      <ellipse cx="975"  cy="145" rx="22" ry="10" fill="#2a5520" opacity="0.9"/>
-      <ellipse cx="1056" cy="132" rx="26" ry="11" fill="#367028" opacity="0.85"/>
-      <ellipse cx="1148" cy="120" rx="24" ry="11" fill="#2a5520" opacity="0.9"/>
-      <ellipse cx="1238" cy="112" rx="28" ry="12" fill="#367028" opacity="0.85"/>
-      <ellipse cx="1328" cy="125" rx="26" ry="12" fill="#2a5520" opacity="0.9"/>
-      <ellipse cx="1395" cy="138" rx="30" ry="13" fill="#367028" opacity="0.85"/>
-
-      <!-- Flowers right -->
-      <circle cx="988"  cy="138" r="4.5" fill="#c050b0"/><circle cx="1068" cy="125" r="3.5" fill="#f08020"/>
-      <circle cx="1160" cy="114" r="4.5" fill="#c050b0"/><circle cx="1248" cy="106" r="3.5" fill="#50d030"/>
-      <circle cx="1340" cy="118" r="4"   fill="#f08020"/><circle cx="1408" cy="130" r="4.5" fill="#c050b0"/>
-    </svg>
-  </div>
-
-  <!-- ── HORIZON MIST ── -->
-  <div class="layer layer-mist" data-speed="0.14">
-    <svg viewBox="0 0 1440 80" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <filter id="mb"><feGaussianBlur stdDeviation="9"/></filter>
-        <linearGradient id="mg" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="rgba(175,230,250,0.72)"/>
-          <stop offset="100%" stop-color="rgba(175,230,250,0)"/>
-        </linearGradient>
-      </defs>
-      <rect x="0" y="0" width="1440" height="80" fill="url(#mg)" filter="url(#mb)"/>
-    </svg>
-  </div>
-
-  <!-- ── OCEAN with FACETED DIAMOND PATTERN ── -->
-  <div class="layer layer-ocean" data-speed="0.05">
-    <svg viewBox="0 0 1440 420" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- ── OCEAN (teal, low-poly facets) ── -->
+  <div class="layer" style="bottom:0;height:68%;z-index:3;" data-speed="0.04">
+    <svg viewBox="0 0 1440 612" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <linearGradient id="og" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%"   stop-color="#22d8f2"/>
-          <stop offset="30%"  stop-color="#14c4e0"/>
-          <stop offset="65%"  stop-color="#08b0cc"/>
-          <stop offset="100%" stop-color="#059ab8"/>
+          <stop offset="0%"   stop-color="#0a5848"/>
+          <stop offset="28%"  stop-color="#0c6e60"/>
+          <stop offset="58%"  stop-color="#0e8c78"/>
+          <stop offset="82%"  stop-color="#10a08a"/>
+          <stop offset="100%" stop-color="#12b098"/>
         </linearGradient>
       </defs>
+      <rect x="0" y="0" width="1440" height="612" fill="url(#og)"/>
 
-      <!-- Ocean base -->
-      <rect x="0" y="0" width="1440" height="420" fill="url(#og)"/>
-
-      <!-- ── Faceted water: rows of diamond/polygon shapes ── -->
-      <!-- Row 1 – tiny near-horizon facets -->
-      <polygon points="85,14 128,4 170,14 128,26"   fill="#3ee8f8" opacity="0.38"/>
-      <polygon points="198,9  248,0  298,9  248,20"  fill="#55eefa" opacity="0.32"/>
-      <polygon points="348,12 400,2  452,12 400,24"  fill="#3ee8f8" opacity="0.3"/>
-      <polygon points="494,8  550,0  606,8  550,18"  fill="#28d8ec" opacity="0.35"/>
-      <polygon points="648,12 706,2  764,12 706,24"  fill="#42eaf8" opacity="0.32"/>
-      <polygon points="796,8  858,0  918,8  858,18"  fill="#3ee8f8" opacity="0.3"/>
-      <polygon points="966,10 1028,1 1090,10 1028,21" fill="#32e0f2" opacity="0.35"/>
-      <polygon points="1108,8 1172,0 1236,8 1172,18" fill="#3ee8f8" opacity="0.32"/>
-      <polygon points="1256,12 1318,2 1380,12 1318,24" fill="#42eaf8" opacity="0.3"/>
+      <!-- Low-poly facets – angular, large -->
+      <!-- Horizon row (fine) -->
+      <polygon points="480,14 590,2  700,14 590,28"   fill="#0e7868" opacity="0.55"/>
+      <polygon points="695,10 820,0  945,10 820,22"   fill="#10907a" opacity="0.48"/>
+      <polygon points="940,14 1065,2 1190,14 1065,28" fill="#0e7868" opacity="0.52"/>
+      <polygon points="1185,10 1310,0 1440,8 1440,22 1310,22" fill="#10907a" opacity="0.48"/>
 
       <!-- Row 2 -->
-      <polygon points="32,38  96,22  160,38  96,56"   fill="#50ecfa" opacity="0.3"/>
-      <polygon points="165,36 240,20 315,36 240,54"   fill="#36e0f2" opacity="0.26"/>
-      <polygon points="318,40 398,24 478,40 398,58"   fill="#46eaf8" opacity="0.3"/>
-      <polygon points="482,36 566,20 650,36 566,54"   fill="#32dff0" opacity="0.32"/>
-      <polygon points="654,40 742,24 830,40 742,58"   fill="#50ecfa" opacity="0.26"/>
-      <polygon points="834,36 926,20 1018,36 926,54"  fill="#3ee8f8" opacity="0.3"/>
-      <polygon points="1022,40 1114,24 1206,40 1114,58" fill="#36e0f2" opacity="0.32"/>
-      <polygon points="1210,36 1304,20 1398,36 1304,54" fill="#46eaf8" opacity="0.26"/>
+      <polygon points="410,42 545,22 680,42 545,64"   fill="#0d8070" opacity="0.48"/>
+      <polygon points="672,38 820,18 968,38 820,60"   fill="#0f9882" opacity="0.44"/>
+      <polygon points="958,42 1104,22 1250,42 1104,64" fill="#0d8070" opacity="0.48"/>
+      <polygon points="1244,38 1342,18 1440,30 1440,60 1342,60" fill="#0f9882" opacity="0.44"/>
 
       <!-- Row 3 -->
-      <polygon points="0,72   74,52  148,72  74,94"   fill="#52eefa" opacity="0.22"/>
-      <polygon points="144,70 228,48 312,70 228,94"   fill="#3ee8f8" opacity="0.25"/>
-      <polygon points="316,76 406,53 496,76 406,102"  fill="#32dff0" opacity="0.2"/>
-      <polygon points="500,72 600,50 700,72 600,96"   fill="#50ecfa" opacity="0.22"/>
-      <polygon points="704,76 808,53 912,76 808,102"  fill="#42eaf8" opacity="0.2"/>
-      <polygon points="916,72 1022,50 1128,72 1022,96" fill="#36e0f2" opacity="0.22"/>
-      <polygon points="1132,76 1238,53 1344,76 1238,102" fill="#3ee8f8" opacity="0.2"/>
-      <polygon points="1348,72 1414,50 1440,62 1440,96 1414,96" fill="#50ecfa" opacity="0.22"/>
+      <polygon points="330,82 485,54 640,82 485,112"   fill="#0e9080" opacity="0.4"/>
+      <polygon points="630,78 795,50 960,78 795,108"   fill="#10a08a" opacity="0.36"/>
+      <polygon points="950,82 1115,54 1280,82 1115,112" fill="#0e9080" opacity="0.4"/>
+      <polygon points="1272,78 1356,50 1440,62 1440,108 1356,108" fill="#10a08a" opacity="0.36"/>
 
       <!-- Row 4 -->
-      <polygon points="0,118  94,88  188,118  94,150"  fill="#42eaf8" opacity="0.18"/>
-      <polygon points="184,114 288,84 392,114 288,146" fill="#2ed8ec" opacity="0.2"/>
-      <polygon points="388,120 498,88 608,120 498,154" fill="#3ee8f8" opacity="0.18"/>
-      <polygon points="604,116 720,84 836,116 720,148" fill="#50ecfa" opacity="0.2"/>
-      <polygon points="832,120 954,88 1076,120 954,154" fill="#32dff0" opacity="0.18"/>
-      <polygon points="1072,116 1196,84 1320,116 1196,148" fill="#42eaf8" opacity="0.2"/>
-      <polygon points="1316,120 1400,88 1440,105 1440,154 1400,154" fill="#3ee8f8" opacity="0.18"/>
+      <polygon points="245,134 418,96 591,134 418,174"  fill="#10a890" opacity="0.32"/>
+      <polygon points="581,128 762,90 943,128 762,168"  fill="#0e9080" opacity="0.34"/>
+      <polygon points="933,134 1114,96 1295,134 1114,174" fill="#10a890" opacity="0.32"/>
+      <polygon points="1287,128 1364,90 1440,105 1440,168 1364,168" fill="#0e9080" opacity="0.34"/>
 
       <!-- Row 5 -->
-      <polygon points="0,168  114,130 228,168 114,208"  fill="#50ecfa" opacity="0.15"/>
-      <polygon points="222,164 348,125 474,164 348,205" fill="#36e0f2" opacity="0.17"/>
-      <polygon points="468,170 602,130 736,170 602,212" fill="#46eaf8" opacity="0.15"/>
-      <polygon points="730,166 870,126 1010,166 870,208" fill="#2ed8ec" opacity="0.17"/>
-      <polygon points="1004,170 1144,130 1284,170 1144,212" fill="#3ee8f8" opacity="0.15"/>
-      <polygon points="1278,166 1380,126 1440,148 1440,208 1380,208" fill="#50ecfa" opacity="0.17"/>
+      <polygon points="158,200 350,152 542,200 350,250"  fill="#12b098" opacity="0.26"/>
+      <polygon points="532,194 732,146 932,194 732,244"  fill="#10a08a" opacity="0.28"/>
+      <polygon points="922,200 1120,152 1318,200 1120,250" fill="#12b098" opacity="0.26"/>
 
-      <!-- Row 6 – large foreground -->
-      <polygon points="0,230  135,182 270,230 135,280"  fill="#42eaf8" opacity="0.12"/>
-      <polygon points="264,226 410,176 556,226 410,278" fill="#32dff0" opacity="0.13"/>
-      <polygon points="550,232 704,182 858,232 704,284" fill="#3ee8f8" opacity="0.12"/>
-      <polygon points="852,228 1012,178 1172,228 1012,280" fill="#50ecfa" opacity="0.13"/>
-      <polygon points="1166,232 1318,182 1440,210 1440,284 1318,284" fill="#36e0f2" opacity="0.12"/>
+      <!-- Row 6 – large -->
+      <polygon points="68,282 278,224 488,282 278,342"   fill="#12b098" opacity="0.22"/>
+      <polygon points="478,276 696,218 914,276 696,336"  fill="#0fa888" opacity="0.24"/>
+      <polygon points="904,282 1120,224 1336,282 1120,342" fill="#12b098" opacity="0.22"/>
 
-      <!-- ── Bright highlight diamonds (static sparkles in SVG) ── -->
-      <!-- Row near horizon -->
-      <polygon points="258,18 267,7  276,18 267,29"  fill="rgba(255,255,255,0.75)"/>
-      <polygon points="432,14 442,2  452,14 442,26"  fill="rgba(255,255,255,0.68)"/>
-      <polygon points="618,18 629,5  640,18 629,31"  fill="rgba(255,255,255,0.72)"/>
-      <polygon points="804,12 815,0  826,12 815,24"  fill="rgba(255,255,255,0.68)"/>
-      <polygon points="984,16 996,3  1008,16 996,29" fill="rgba(255,255,255,0.74)"/>
-      <polygon points="1162,12 1174,0 1186,12 1174,24" fill="rgba(255,255,255,0.68)"/>
-      <polygon points="1342,16 1355,3 1368,16 1355,29" fill="rgba(255,255,255,0.72)"/>
+      <!-- Bright shimmer facets -->
+      <polygon points="760,22  804,10  848,22  804,34"  fill="#22d0a8" opacity="0.48"/>
+      <polygon points="1062,16 1108,4 1154,16 1108,28"  fill="#1ec8a0" opacity="0.42"/>
+      <polygon points="896,60  944,44  992,60  944,76"  fill="#22d0a8" opacity="0.38"/>
+      <polygon points="1194,54 1244,38 1294,54 1244,70"  fill="#1ec8a0" opacity="0.34"/>
+      <polygon points="698,108 754,88  810,108 754,128"  fill="#22d0a8" opacity="0.3"/>
+      <polygon points="1096,100 1154,80 1212,100 1154,120" fill="#1ec8a0" opacity="0.28"/>
 
-      <!-- Row mid -->
-      <polygon points="140,48 152,33 164,48 152,63"  fill="rgba(255,255,255,0.65)"/>
-      <polygon points="360,44 374,27 388,44 374,61"  fill="rgba(255,255,255,0.7)"/>
-      <polygon points="578,50 593,32 608,50 593,68"  fill="rgba(255,255,255,0.65)"/>
-      <polygon points="784,46 800,28 816,46 800,64"  fill="rgba(255,255,255,0.7)"/>
-      <polygon points="994,50 1010,32 1026,50 1010,68" fill="rgba(255,255,255,0.65)"/>
-      <polygon points="1198,46 1215,28 1232,46 1215,64" fill="rgba(255,255,255,0.7)"/>
-      <polygon points="1402,50 1419,32 1436,50 1419,68" fill="rgba(255,255,255,0.65)"/>
-
-      <!-- Row lower -->
-      <polygon points="70,90  84,72  98,90  84,108"  fill="rgba(255,255,255,0.55)"/>
-      <polygon points="290,86 306,66 322,86 306,106" fill="rgba(255,255,255,0.6)"/>
-      <polygon points="510,92 527,70 544,92 527,114" fill="rgba(255,255,255,0.55)"/>
-      <polygon points="730,88 748,66 766,88 748,110" fill="rgba(255,255,255,0.6)"/>
-      <polygon points="950,92 969,70 988,92 969,114" fill="rgba(255,255,255,0.55)"/>
-      <polygon points="1168,88 1188,66 1208,88 1188,110" fill="rgba(255,255,255,0.6)"/>
-      <polygon points="1386,92 1406,70 1426,92 1406,114" fill="rgba(255,255,255,0.55)"/>
-
-      <!-- Wave foam lines -->
-      <path d="M0,32 Q120,24 240,32 Q360,40 480,32 Q600,24 720,32 Q840,40 960,32 Q1080,24 1200,32 Q1320,40 1440,32" stroke="rgba(255,255,255,0.42)" stroke-width="2.5" fill="none"/>
-      <path d="M0,52 Q180,42 360,52 Q540,62 720,52 Q900,42 1080,52 Q1260,62 1440,52" stroke="rgba(255,255,255,0.28)" stroke-width="2" fill="none"/>
+      <!-- Wave shimmer lines -->
+      <path d="M440,46 Q600,36 760,46 Q920,56 1080,46 Q1240,36 1400,46" stroke="rgba(160,255,220,0.22)" stroke-width="2" fill="none"/>
+      <path d="M360,90 Q550,78 740,90 Q930,102 1120,90 Q1310,78 1440,88" stroke="rgba(160,255,220,0.18)" stroke-width="2" fill="none"/>
+      <path d="M260,146 Q490,130 720,146 Q950,162 1180,146 Q1380,132 1440,142" stroke="rgba(160,255,220,0.15)" stroke-width="2" fill="none"/>
+      <path d="M160,214 Q440,195 720,214 Q1000,233 1280,214 Q1420,200 1440,210" stroke="rgba(160,255,220,0.12)" stroke-width="2" fill="none"/>
     </svg>
   </div>
 
-  <!-- ── ANIMATED WAVE LAYERS ── -->
-  <div class="wave-layer" style="bottom:37%;height:19%;" data-speed="0.22">
-    <svg viewBox="0 0 1440 82" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M0,41 Q180,10 360,41 Q540,72 720,41 Q900,10 1080,41 Q1260,72 1440,41 L1440,82 L0,82 Z" fill="#2cd4ee" opacity="0.62"/>
-      <path d="M0,41 Q180,10 360,41 Q540,72 720,41 Q900,10 1080,41 Q1260,72 1440,41" stroke="rgba(255,255,255,0.45)" stroke-width="2.5" fill="none"/>
+  <!-- ── CLIFF FACE (massive angular left cliff) ── -->
+  <div class="layer" style="top:0;height:100%;z-index:5;" data-speed="0">
+    <svg viewBox="0 0 1440 900" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- ── BASE SHAPE ── -->
+      <polygon points="0,0 875,0 865,70 835,155 805,235 775,310 742,385 708,450 668,515 618,574 558,635 488,695 408,752 318,810 208,868 95,920 0,900"
+               fill="#080f22"/>
+
+      <!-- ── UPPER CLIFF FACETS ── -->
+      <!-- Very dark anchor panels -->
+      <polygon points="0,0 195,0 178,76 118,118 58,98 0,78"         fill="#060c1c" opacity="0.97"/>
+      <polygon points="58,0 155,0 168,58 138,88 78,78 48,48"         fill="#09152e" opacity="0.93"/>
+      <!-- Main diagonal facet panels across the face -->
+      <polygon points="175,0 375,0 365,58 335,88 275,84 196,58"     fill="#091830" opacity="0.92"/>
+      <polygon points="332,0 514,0 504,48 474,82 414,88 344,62"     fill="#0d1f3e" opacity="0.9"/>
+      <polygon points="490,0 665,0 654,43 624,78 562,86 492,58"     fill="#0b1c3a" opacity="0.93"/>
+      <polygon points="622,0 798,0 788,40 758,72 696,80 625,55"     fill="#0f2242" opacity="0.9"/>
+      <!-- Upper highlight strips (light catching faces) -->
+      <polygon points="96,78 238,48 298,88 278,138 196,158 98,128"  fill="#1a3660" opacity="0.86"/>
+      <polygon points="238,52 375,22 436,64 415,118 332,140 240,108" fill="#1e3c68" opacity="0.84"/>
+      <polygon points="348,28 486,4  544,46 526,100 442,122 350,88"  fill="#122040" opacity="0.91"/>
+      <polygon points="478,6  612,0  670,36 652,88 568,108 482,72"  fill="#163054" opacity="0.87"/>
+      <polygon points="598,0  728,0  738,30 718,70 645,88 605,52"   fill="#0e1e3a" opacity="0.93"/>
+      <polygon points="698,0  836,0  848,32 825,65 755,78 705,44"   fill="#1a3460" opacity="0.86"/>
+
+      <!-- ── MID CLIFF FACETS ── -->
+      <!-- Shadow zones left edge -->
+      <polygon points="0,78  118,78  148,128 138,188 78,208  0,178"  fill="#05091a" opacity="0.97"/>
+      <polygon points="0,174 88,174  118,224 108,288 52,308  0,278"  fill="#060a1c" opacity="0.96"/>
+      <polygon points="0,274 78,278  106,334 94,398  40,418  0,388"  fill="#05091a" opacity="0.97"/>
+      <!-- Mid stepping facets diagonal -->
+      <polygon points="88,124 198,98  248,144 238,210 168,234 90,200" fill="#102240" opacity="0.91"/>
+      <polygon points="178,98  308,72  362,120 350,188 276,214 180,178" fill="#1a3458" opacity="0.86"/>
+      <polygon points="278,76  408,50  465,98  450,168 374,194 280,158" fill="#122848" opacity="0.91"/>
+      <polygon points="376,52  505,26  562,76  546,148 468,174 378,136" fill="#1e3c62" opacity="0.83"/>
+      <polygon points="472,28  598,4   658,54  640,126 560,152 474,112" fill="#152e50" opacity="0.89"/>
+      <polygon points="562,6   688,0   748,46  728,118 647,144 565,102" fill="#0d2040" opacity="0.93"/>
+      <polygon points="648,0   774,0   834,40  812,110 730,138 650,96"  fill="#1a3660" opacity="0.86"/>
+
+      <!-- ── LOWER-MID CLIFF ── -->
+      <polygon points="0,378 66,370  97,428  88,502  36,522  0,498"   fill="#060a1a" opacity="0.96"/>
+      <polygon points="48,352 165,328 210,380 196,454 124,478 50,450" fill="#0d1e38" opacity="0.93"/>
+      <polygon points="138,318 260,290 305,346 290,422 215,448 140,418" fill="#152c50" opacity="0.89"/>
+      <polygon points="228,286 352,258 398,316 382,394 305,420 230,388" fill="#1c3860" opacity="0.83"/>
+      <polygon points="320,254 446,224 495,284 478,362 398,390 322,356" fill="#132848" opacity="0.91"/>
+      <polygon points="412,220 540,188 592,250 572,330 490,358 414,320" fill="#1a3458" opacity="0.86"/>
+      <polygon points="505,184 634,150 688,214 667,294 582,324 507,286" fill="#203e68" opacity="0.81"/>
+      <polygon points="596,148 728,110 782,176 760,258 672,288 598,248" fill="#152e52" opacity="0.88"/>
+      <polygon points="686,108 820,68  875,136 852,220 760,250 688,208" fill="#0d2040" opacity="0.93"/>
+      <polygon points="776,66  856,40  897,103 875,184 792,214 778,172" fill="#1e3c62" opacity="0.83"/>
+
+      <!-- ── EVEN LOWER CLIFF ── -->
+      <polygon points="0,490 40,480  60,503  40,528  0,518"           fill="#060a18" opacity="0.97"/>
+      <polygon points="0,583 28,575  48,598  28,621  0,613"           fill="#060a18" opacity="0.97"/>
+      <polygon points="0,672 18,666  38,690  18,713  0,705"           fill="#060a18" opacity="0.97"/>
+      <polygon points="0,458 88,444  126,488 114,556 50,576  0,546"   fill="#07101e" opacity="0.95"/>
+      <polygon points="70,426 186,406 228,454 212,522 146,546 72,514" fill="#0d1e38" opacity="0.92"/>
+      <polygon points="165,393 284,370 328,420 312,493 242,517 168,480" fill="#152c4c" opacity="0.88"/>
+      <polygon points="262,358 386,334 432,386 414,460 340,485 264,447" fill="#1c3660" opacity="0.83"/>
+      <polygon points="360,320 487,295 535,350 516,426 440,451 362,412" fill="#0e2238" opacity="0.91"/>
+      <polygon points="460,281 590,252 640,310 620,388 540,414 462,373" fill="#162c4c" opacity="0.88"/>
+      <polygon points="562,240 695,208 748,268 726,348 640,374 564,332" fill="#1d3860" opacity="0.83"/>
+      <polygon points="665,197 800,162 855,225 833,306 744,332 668,288" fill="#122548" opacity="0.89"/>
+      <polygon points="768,152 855,122 888,180 866,260 795,284 770,237" fill="#1a3658" opacity="0.84"/>
+
+      <!-- ── DEEP SHADOW CREVICES (dark angular lines) ── -->
+      <!-- Horizontal-ish bands -->
+      <polygon points="0,146 118,130 138,149 116,162 0,176"          fill="#030814" opacity="0.88"/>
+      <polygon points="0,246 100,228 122,247 98,264  0,280"          fill="#030814" opacity="0.88"/>
+      <polygon points="0,346 84,330  106,349 82,366  0,380"          fill="#030814" opacity="0.88"/>
+      <polygon points="0,446 68,430  90,449 66,466  0,480"           fill="#030814" opacity="0.88"/>
+      <polygon points="0,546 54,532  76,551 50,567  0,560"           fill="#030814" opacity="0.88"/>
+      <!-- Diagonal crevices upper -->
+      <polygon points="118,128 178,106 198,128 178,152 118,150"      fill="#030814" opacity="0.82"/>
+      <polygon points="228,103 292,80  314,106 292,130 228,128"      fill="#030814" opacity="0.82"/>
+      <polygon points="340,78  408,54  430,82  408,106 340,104"      fill="#030814" opacity="0.82"/>
+      <polygon points="455,50  526,26  548,54  526,78  455,76"       fill="#030814" opacity="0.82"/>
+      <polygon points="570,20  642,0   665,26  642,52  570,48"       fill="#030814" opacity="0.82"/>
+      <!-- Diagonal crevices mid -->
+      <polygon points="146,228 213,202 236,230 213,256 146,252"      fill="#030814" opacity="0.8"/>
+      <polygon points="262,198 332,170 356,200 332,228 262,225"      fill="#030814" opacity="0.8"/>
+      <polygon points="382,165 455,136 480,168 455,196 382,193"      fill="#030814" opacity="0.8"/>
+      <polygon points="505,130 580,98  606,133 580,164 505,160"      fill="#030814" opacity="0.8"/>
+      <polygon points="628,92  706,60  732,96  706,128 628,125"      fill="#030814" opacity="0.8"/>
+      <polygon points="750,52  828,20  855,56  828,88  750,85"       fill="#030814" opacity="0.8"/>
+      <!-- Crevices lower-mid -->
+      <polygon points="158,328 228,300 254,332 228,360 158,357"      fill="#030814" opacity="0.77"/>
+      <polygon points="282,295 355,265 382,298 355,328 282,325"      fill="#030814" opacity="0.77"/>
+      <polygon points="408,260 484,228 512,263 484,295 408,292"      fill="#030814" opacity="0.77"/>
+      <polygon points="536,222 615,189 643,226 615,258 536,255"      fill="#030814" opacity="0.77"/>
+      <polygon points="664,182 746,148 774,186 746,222 664,218"      fill="#030814" opacity="0.77"/>
+      <polygon points="792,138 872,104 900,143 872,178 792,174"      fill="#030814" opacity="0.77"/>
+      <!-- Lower crevices -->
+      <polygon points="53,538  118,524 140,548 118,571 53,563"       fill="#030814" opacity="0.8"/>
+      <polygon points="148,503 220,485 244,512 220,538 148,531"      fill="#030814" opacity="0.8"/>
+      <polygon points="245,466 322,447 347,476 322,503 245,497"      fill="#030814" opacity="0.8"/>
+      <polygon points="344,427 425,407 451,437 425,463 344,458"      fill="#030814" opacity="0.8"/>
+      <polygon points="445,387 530,365 556,398 530,425 445,418"      fill="#030814" opacity="0.8"/>
+      <polygon points="548,345 636,322 663,356 636,384 548,378"      fill="#030814" opacity="0.8"/>
+      <polygon points="654,301 745,277 772,313 745,342 654,336"      fill="#030814" opacity="0.8"/>
+      <polygon points="760,255 853,230 880,267 853,298 760,291"      fill="#030814" opacity="0.8"/>
+
+      <!-- ── BRIGHT HIGHLIGHT FACES (light catching planes) ── -->
+      <polygon points="98,130  138,116 158,138 138,160 98,156"       fill="#28487a" opacity="0.72"/>
+      <polygon points="213,103 256,88  275,113 256,136 213,131"      fill="#244272" opacity="0.68"/>
+      <polygon points="330,78  375,62  396,88  375,112 330,108"      fill="#28487a" opacity="0.72"/>
+      <polygon points="450,50  498,33  519,60  498,86  450,82"       fill="#244272" opacity="0.68"/>
+      <polygon points="572,20  620,4   642,32  620,57  572,51"       fill="#28487a" opacity="0.72"/>
+      <polygon points="694,0   744,0   760,26  740,50  698,50"       fill="#1e3a68" opacity="0.68"/>
+      <polygon points="146,230 193,210 214,238 193,263 146,258"      fill="#28487a" opacity="0.66"/>
+      <polygon points="270,198 318,176 340,206 318,233 270,228"      fill="#244272" opacity="0.62"/>
+      <polygon points="396,163 446,140 469,172 446,200 396,195"      fill="#28487a" opacity="0.66"/>
+      <polygon points="524,127 578,102 601,136 578,164 524,158"      fill="#244272" opacity="0.62"/>
+      <polygon points="650,87  707,61  730,97  707,124 650,120"      fill="#28487a" opacity="0.66"/>
+      <polygon points="778,45  835,20  858,56  835,82  778,77"       fill="#1e3a68" opacity="0.62"/>
+      <polygon points="60,542  103,528 123,553 103,576 60,568"       fill="#244272" opacity="0.62"/>
+      <polygon points="156,506 201,490 223,518 201,543 156,535"      fill="#28487a" opacity="0.6"/>
+      <polygon points="254,468 302,450 324,480 302,506 254,498"      fill="#244272" opacity="0.62"/>
+      <polygon points="354,428 406,408 429,440 406,466 354,458"      fill="#28487a" opacity="0.6"/>
+      <polygon points="456,388 510,367 534,400 510,427 456,419"      fill="#244272" opacity="0.62"/>
+      <polygon points="560,346 618,323 642,358 618,386 560,377"      fill="#28487a" opacity="0.6"/>
+      <polygon points="666,302 726,278 750,315 726,344 666,335"      fill="#244272" opacity="0.62"/>
+      <polygon points="771,256 836,231 860,268 836,298 771,290"      fill="#28487a" opacity="0.6"/>
+
+      <!-- Subtle teal-blue rock patches -->
+      <polygon points="0,153 86,140 108,163 86,186 0,176"           fill="#0c2234" opacity="0.72"/>
+      <polygon points="0,263 68,250 90,273 68,296 0,286"            fill="#0c2234" opacity="0.72"/>
+      <polygon points="0,373 52,360 74,383 52,406 0,396"            fill="#0a1e30" opacity="0.74"/>
+      <polygon points="110,138 165,120 188,146 165,170 110,165"     fill="#0e2638" opacity="0.7"/>
+      <polygon points="234,108 295,88  318,116 295,142 234,138"     fill="#0c2234" opacity="0.72"/>
+      <polygon points="360,79  424,56  448,86  424,112 360,108"     fill="#0e2638" opacity="0.7"/>
+      <polygon points="492,47  558,24  582,54  558,80  492,76"      fill="#0c2234" opacity="0.72"/>
+      <polygon points="622,14  692,0   715,28  692,54  622,50"      fill="#0e2638" opacity="0.7"/>
     </svg>
   </div>
 
-  <div class="wave-layer" style="bottom:28%;height:24%;" data-speed="0.31">
-    <svg viewBox="0 0 1440 95" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M0,46 Q162,12 324,46 Q486,80 648,46 Q810,12 972,46 Q1134,80 1296,46 Q1385,22 1440,40 L1440,95 L0,95 Z" fill="#3cdcf4" opacity="0.56"/>
-      <path d="M0,46 Q162,12 324,46 Q486,80 648,46 Q810,12 972,46 Q1134,80 1296,46 Q1385,22 1440,40" stroke="rgba(255,255,255,0.55)" stroke-width="3" fill="none"/>
+  <!-- ── WINDING ROAD ── -->
+  <div class="layer" style="top:0;height:100%;z-index:6;pointer-events:none;">
+    <svg viewBox="0 0 1440 900" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Road dark edge -->
+      <path d="M18,825 Q58,782 98,742 Q138,702 163,663 Q183,628 178,592 Q172,554 188,522 Q208,492 248,472 Q293,452 342,442 Q398,431 456,423 Q518,413 572,400 Q628,387 678,370 Q732,350 782,327"
+            stroke="rgba(35,58,88,0.92)" stroke-width="17" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      <!-- Road surface -->
+      <path d="M18,825 Q58,782 98,742 Q138,702 163,663 Q183,628 178,592 Q172,554 188,522 Q208,492 248,472 Q293,452 342,442 Q398,431 456,423 Q518,413 572,400 Q628,387 678,370 Q732,350 782,327"
+            stroke="rgba(85,120,160,0.88)" stroke-width="11" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      <!-- Centre dashes -->
+      <path d="M18,825 Q58,782 98,742 Q138,702 163,663 Q183,628 178,592 Q172,554 188,522 Q208,492 248,472 Q293,452 342,442 Q398,431 456,423 Q518,413 572,400 Q628,387 678,370 Q732,350 782,327"
+            stroke="rgba(175,208,240,0.48)" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-dasharray="18,14" stroke-linejoin="round"/>
     </svg>
   </div>
 
-  <div class="wave-layer" style="bottom:18%;height:28%;" data-speed="0.4">
-    <svg viewBox="0 0 1440 105" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M0,52 Q144,14 288,52 Q432,90 576,52 Q720,14 864,52 Q1008,90 1152,52 Q1296,14 1440,48 L1440,105 L0,105 Z" fill="#50e8f8" opacity="0.5"/>
-      <path d="M0,52 Q144,14 288,52 Q432,90 576,52 Q720,14 864,52 Q1008,90 1152,52 Q1296,14 1440,48" stroke="rgba(255,255,255,0.62)" stroke-width="3.5" fill="none"/>
-    </svg>
-  </div>
-
-  <!-- ── SPARKLES (animated CSS diamonds) ── -->
-  <div class="sparkles-container" id="sparkles"></div>
-
-  <!-- ── SAILBOAT ── -->
-  <div class="sailboat" data-speed="0.18">
-    <svg viewBox="0 0 52 68" xmlns="http://www.w3.org/2000/svg">
-      <line x1="26" y1="6" x2="26" y2="50" stroke="rgba(255,255,255,0.95)" stroke-width="1.3"/>
-      <polygon points="26,8 26,46 6,46"   fill="rgba(255,255,255,0.95)"/>
-      <polygon points="26,12 26,42 42,42" fill="rgba(255,255,255,0.75)"/>
-      <ellipse cx="26" cy="52" rx="18" ry="4.5" fill="rgba(255,255,255,0.92)"/>
-      <path d="M8,52 Q26,60 44,52" fill="rgba(225,242,255,0.78)" stroke="none"/>
-    </svg>
-  </div>
-
-  <!-- ── FOREGROUND – dark rocks, agave, cypress, flowers ── -->
-  <div class="layer layer-foreground" data-speed="0.44">
-    <svg viewBox="0 0 1440 420" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- ── MIST at cliff base ── -->
+  <div class="layer" style="bottom:15%;height:20%;z-index:7;" data-speed="0.08">
+    <svg viewBox="0 0 1440 180" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <linearGradient id="rl" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="#0c0a18"/><stop offset="100%" stop-color="#1a1428"/>
+        <filter id="mbl"><feGaussianBlur stdDeviation="14"/></filter>
+        <linearGradient id="mgh" x1="0" y1="0.5" x2="1" y2="0.5">
+          <stop offset="0%"  stop-color="rgba(150,215,195,0.72)"/>
+          <stop offset="45%" stop-color="rgba(150,215,195,0.5)"/>
+          <stop offset="72%" stop-color="rgba(150,215,195,0.18)"/>
+          <stop offset="100%" stop-color="rgba(150,215,195,0)"/>
         </linearGradient>
-        <linearGradient id="rr" x1="1" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#0c0a18"/><stop offset="100%" stop-color="#1a1428"/>
+        <linearGradient id="mgv" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%"   stop-color="rgba(150,215,195,0)"/>
+          <stop offset="42%"  stop-color="rgba(150,215,195,0.68)"/>
+          <stop offset="100%" stop-color="rgba(150,215,195,0)"/>
         </linearGradient>
       </defs>
-
-      <!-- LEFT cliff mass -->
-      <polygon points="0,420 0,178 32,152 74,164 105,142 136,157 160,138 174,158 168,196 148,222 112,254 82,294 52,336 22,376 0,420" fill="url(#rl)"/>
-      <polygon points="0,420 0,222 26,202 54,218 68,244 58,274 32,316 12,360 0,420" fill="#09061a" opacity="0.65"/>
-      <polygon points="42,178 76,163 98,180 87,206 56,202" fill="#1a1430" opacity="0.7"/>
-      <polygon points="104,158 136,148 158,164 146,190 115,184" fill="#140e22" opacity="0.65"/>
-
-      <!-- LEFT – Tall agave plants (golden) -->
-      <g transform="translate(88, 142)">
-        <polygon points="0,-85 4,0 -4,0"    fill="#c8920a"/>
-        <polygon points="0,-58 20,-22 9,6 0,-8"   fill="#d8a010" opacity="0.9"/>
-        <polygon points="0,-58 -20,-22 -9,6 0,-8"  fill="#b87c08" opacity="0.9"/>
-        <polygon points="0,-48 28,-9 14,9 0,0"   fill="#d8a010" opacity="0.82"/>
-        <polygon points="0,-48 -28,-9 -14,9 0,0"  fill="#c08808" opacity="0.82"/>
-        <polygon points="0,-36 35,7 18,17 0,8"   fill="#e0b018" opacity="0.76"/>
-        <polygon points="0,-36 -35,7 -18,17 0,8"  fill="#c8920a" opacity="0.76"/>
-        <polygon points="0,-24 40,17 22,25 0,14"  fill="#d8a010" opacity="0.7"/>
-        <polygon points="0,-24 -40,17 -22,25 0,14" fill="#b07208" opacity="0.7"/>
-      </g>
-
-      <g transform="translate(130, 152)">
-        <polygon points="0,-68 3,0 -3,0" fill="#c8920a"/>
-        <polygon points="0,-46 16,-16 7,6 0,-7"  fill="#d8a010" opacity="0.9"/>
-        <polygon points="0,-46 -16,-16 -7,6 0,-7" fill="#b87c08" opacity="0.9"/>
-        <polygon points="0,-36 24,-6 11,9 0,2"  fill="#d8a010" opacity="0.82"/>
-        <polygon points="0,-36 -24,-6 -11,9 0,2" fill="#c08808" opacity="0.82"/>
-        <polygon points="0,-26 30,9 15,17 0,9"  fill="#e0b018" opacity="0.76"/>
-        <polygon points="0,-26 -30,9 -15,17 0,9" fill="#c8920a" opacity="0.76"/>
-      </g>
-
-      <g transform="translate(56, 162)">
-        <polygon points="0,-48 3,0 -3,0" fill="#b87a08"/>
-        <polygon points="0,-33 13,-11 6,4 0,-6"  fill="#c8920a" opacity="0.9"/>
-        <polygon points="0,-33 -13,-11 -6,4 0,-6" fill="#a06606" opacity="0.9"/>
-        <polygon points="0,-23 19,2 9,11 0,4"  fill="#c8920a" opacity="0.82"/>
-        <polygon points="0,-23 -19,2 -9,11 0,4" fill="#a06606" opacity="0.82"/>
-        <polygon points="0,-14 24,11 11,18 0,8"  fill="#d8a010" opacity="0.75"/>
-        <polygon points="0,-14 -24,11 -11,18 0,8" fill="#b07208" opacity="0.75"/>
-      </g>
-
-      <!-- LEFT – Lavender flowering bush -->
-      <g transform="translate(32, 202)">
-        <ellipse cx="0" cy="0" rx="30" ry="19" fill="#38245a"/>
-        <ellipse cx="-11" cy="-13" rx="19" ry="13" fill="#4a3470"/>
-        <ellipse cx="13"  cy="-11" rx="17" ry="12" fill="#5a4480"/>
-        <circle cx="-16" cy="-19" r="4.5" fill="#9462d2"/><circle cx="-5"  cy="-23" r="4"   fill="#a472da"/>
-        <circle cx="6"   cy="-21" r="4.5" fill="#9462d2"/><circle cx="17"  cy="-18" r="3.5" fill="#8252c8"/>
-        <circle cx="-21" cy="-11" r="3.5" fill="#a472da"/><circle cx="21"  cy="-9"  r="4"   fill="#9462d2"/>
-        <circle cx="0"   cy="-13" r="3.5" fill="#b482e2"/>
-        <circle cx="-16" cy="-20" r="1.5" fill="#d2aaf4" opacity="0.75"/>
-        <circle cx="-5"  cy="-24" r="1.5" fill="#d2aaf4" opacity="0.75"/>
-        <circle cx="6"   cy="-22" r="1.5" fill="#d2aaf4" opacity="0.75"/>
-      </g>
-
-      <!-- LEFT – Red berry cluster -->
-      <g transform="translate(158, 185)">
-        <ellipse cx="0" cy="0" rx="22" ry="15" fill="#1a2a18"/>
-        <ellipse cx="-7" cy="-9" rx="13" ry="10" fill="#223020"/>
-        <circle cx="-11" cy="-13" r="5"   fill="#c42a1e"/><circle cx="-1"  cy="-16" r="4.5" fill="#d43226"/>
-        <circle cx="9"   cy="-13" r="5"   fill="#c42a1e"/><circle cx="-7"  cy="-6"  r="4"   fill="#d43226"/>
-        <circle cx="4"   cy="-6"  r="4.5" fill="#c42a1e"/><circle cx="15"  cy="-7"  r="4"   fill="#dc3430"/>
-        <circle cx="-12" cy="-15" r="1.8" fill="#ff6454" opacity="0.62"/>
-        <circle cx="-2"  cy="-18" r="1.8" fill="#ff6454" opacity="0.62"/>
-        <circle cx="8"   cy="-15" r="1.8" fill="#ff6454" opacity="0.62"/>
-      </g>
-
-      <!-- RIGHT cliff mass -->
-      <polygon points="1440,420 1440,158 1408,142 1372,157 1338,144 1306,160 1276,148 1250,166 1246,195 1262,226 1298,262 1340,304 1386,350 1422,384 1440,420" fill="url(#rr)"/>
-      <polygon points="1440,420 1440,200 1414,185 1394,202 1386,232 1402,268 1432,318 1440,420" fill="#09061a" opacity="0.65"/>
-      <polygon points="1368,172 1336,162 1316,178 1326,200 1354,196" fill="#1a1430" opacity="0.7"/>
-
-      <!-- RIGHT – Cypress trees -->
-      <g transform="translate(1340, 144)">
-        <rect x="-4" y="0" width="8" height="42" fill="#0e1a0e"/>
-        <ellipse cx="0" cy="-82" rx="22" ry="19" fill="#1a3016"/>
-        <ellipse cx="0" cy="-67" rx="27" ry="16" fill="#20381a"/>
-        <ellipse cx="0" cy="-52" rx="29" ry="15" fill="#264220"/>
-        <ellipse cx="0" cy="-36" rx="27" ry="14" fill="#1e3818"/>
-        <ellipse cx="0" cy="-22" rx="23" ry="13" fill="#1a3016"/>
-        <ellipse cx="0" cy="-9"  rx="18" ry="11" fill="#162810"/>
-        <ellipse cx="9"  cy="-72" rx="11" ry="9" fill="#2e4818" opacity="0.58"/>
-        <ellipse cx="7"  cy="-46" rx="10" ry="8" fill="#2e4818" opacity="0.52"/>
-      </g>
-      <g transform="translate(1378, 157)">
-        <rect x="-3" y="0" width="6" height="36" fill="#0e1a0e"/>
-        <ellipse cx="0" cy="-66" rx="18" ry="16" fill="#1a3016"/>
-        <ellipse cx="0" cy="-53" rx="22" ry="14" fill="#20381a"/>
-        <ellipse cx="0" cy="-41" rx="24" ry="13" fill="#264220"/>
-        <ellipse cx="0" cy="-29" rx="22" ry="12" fill="#1e3818"/>
-        <ellipse cx="0" cy="-18" rx="18" ry="11" fill="#1a3016"/>
-        <ellipse cx="0" cy="-7"  rx="14" ry="9"  fill="#162810"/>
-        <ellipse cx="8"  cy="-56" rx="8" ry="7" fill="#2e4818" opacity="0.5"/>
-      </g>
-      <g transform="translate(1412, 165)">
-        <rect x="-3" y="0" width="6" height="30" fill="#0e1a0e"/>
-        <ellipse cx="0" cy="-52" rx="16" ry="14" fill="#1a3016"/>
-        <ellipse cx="0" cy="-40" rx="20" ry="13" fill="#20381a"/>
-        <ellipse cx="0" cy="-29" rx="21" ry="12" fill="#264220"/>
-        <ellipse cx="0" cy="-19" rx="19" ry="11" fill="#1e3818"/>
-        <ellipse cx="0" cy="-9"  rx="15" ry="9"  fill="#1a3016"/>
-      </g>
-
-      <!-- RIGHT – Orange flowering bush -->
-      <g transform="translate(1290, 168)">
-        <ellipse cx="0" cy="0" rx="23" ry="16" fill="#1e2a18"/>
-        <ellipse cx="-8" cy="-11" rx="14" ry="11" fill="#243220"/>
-        <ellipse cx="10" cy="-9"  rx="13" ry="10" fill="#1e2a18"/>
-        <circle cx="-13" cy="-16" r="4.5" fill="#e06222"/><circle cx="-3"  cy="-19" r="5"   fill="#f07432"/>
-        <circle cx="8"   cy="-16" r="4.5" fill="#e06222"/><circle cx="17"  cy="-12" r="4"   fill="#d85020"/>
-        <circle cx="-8"  cy="-8"  r="3.5" fill="#f07432"/>
-        <circle cx="-13" cy="-17" r="1.8" fill="#ffb462" opacity="0.65"/>
-        <circle cx="-3"  cy="-20" r="2"   fill="#ffc472" opacity="0.65"/>
-        <circle cx="8"   cy="-17" r="1.8" fill="#ffb462" opacity="0.65"/>
-      </g>
-
-      <!-- RIGHT – Pink coral bush -->
-      <g transform="translate(1258, 184)">
-        <ellipse cx="0" cy="0" rx="19" ry="13" fill="#1e1a2a"/>
-        <ellipse cx="-5" cy="-9" rx="12" ry="9" fill="#2a2240"/>
-        <circle cx="-9"  cy="-13" r="4"   fill="#c44a90"/><circle cx="0"   cy="-15" r="4.5" fill="#d45aa0"/>
-        <circle cx="9"   cy="-12" r="4"   fill="#c44a90"/><circle cx="-4"  cy="-6"  r="3.5" fill="#b83a80"/>
-        <circle cx="11"  cy="-5"  r="3.5" fill="#d45aa0"/>
-        <circle cx="-9"  cy="-14" r="1.5" fill="#f092c4" opacity="0.65"/>
-        <circle cx="0"   cy="-16" r="1.5" fill="#f092c4" opacity="0.65"/>
-        <circle cx="9"   cy="-13" r="1.5" fill="#f092c4" opacity="0.65"/>
-      </g>
-
-      <!-- Ground cover -->
-      <ellipse cx="22"   cy="322" rx="32" ry="9"  fill="#1a2e14" opacity="0.72"/>
-      <ellipse cx="72"   cy="344" rx="36" ry="10" fill="#223818" opacity="0.62"/>
-      <ellipse cx="1418" cy="312" rx="30" ry="9"  fill="#1a2e14" opacity="0.72"/>
-      <ellipse cx="1378" cy="338" rx="34" ry="10" fill="#223818" opacity="0.62"/>
+      <ellipse cx="315" cy="90" rx="430" ry="58" fill="url(#mgv)" filter="url(#mbl)" opacity="0.88"/>
+      <ellipse cx="190" cy="90" rx="305" ry="42" fill="rgba(175,232,215,0.58)" filter="url(#mbl)" opacity="0.72"/>
+      <ellipse cx="460" cy="90" rx="280" ry="40" fill="rgba(150,215,195,0.42)" filter="url(#mbl)" opacity="0.66"/>
     </svg>
   </div>
 
-  <!-- Hero text -->
+  <!-- ── SAILBOATS ── -->
+  <div class="layer" style="top:0;height:100%;z-index:7;pointer-events:none;">
+    <svg viewBox="0 0 1440 900" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Distant boat 1 -->
+      <g transform="translate(825,322)" opacity="0.68">
+        <line x1="0" y1="-26" x2="0" y2="8" stroke="rgba(155,210,195,0.9)" stroke-width="1"/>
+        <polygon points="0,-24 0,6 -13,6"   fill="rgba(155,210,195,0.85)"/>
+        <polygon points="0,-16 0,4 10,4"    fill="rgba(135,196,182,0.7)"/>
+        <ellipse cx="0" cy="9" rx="11" ry="2.4" fill="rgba(155,210,195,0.8)"/>
+      </g>
+      <!-- Distant boat 2 -->
+      <g transform="translate(1048,312)" opacity="0.72">
+        <line x1="0" y1="-30" x2="0" y2="9" stroke="rgba(155,210,195,0.9)" stroke-width="1.1"/>
+        <polygon points="0,-28 0,7 -15,7"   fill="rgba(155,210,195,0.88)"/>
+        <polygon points="0,-19 0,5 11,5"    fill="rgba(135,196,182,0.72)"/>
+        <ellipse cx="0" cy="10" rx="13" ry="2.7" fill="rgba(155,210,195,0.82)"/>
+      </g>
+      <!-- Closer boat -->
+      <g transform="translate(1268,345)" opacity="0.86">
+        <line x1="0" y1="-54" x2="0" y2="15" stroke="rgba(178,228,215,0.95)" stroke-width="1.4"/>
+        <polygon points="0,-51 0,12 -25,12"  fill="rgba(178,228,215,0.92)"/>
+        <polygon points="0,-35 0,10 19,10"   fill="rgba(155,210,195,0.78)"/>
+        <ellipse cx="0" cy="16" rx="21" ry="3.8" fill="rgba(178,228,215,0.88)"/>
+        <path d="M-21,16 Q0,22 21,16" fill="rgba(135,196,182,0.55)"/>
+        <!-- Soft reflection -->
+        <g opacity="0.28" transform="translate(0,18) scale(1,-0.45)">
+          <polygon points="0,-51 0,12 -25,12" fill="rgba(178,228,215,0.7)"/>
+          <polygon points="0,-35 0,10 19,10"  fill="rgba(155,210,195,0.6)"/>
+        </g>
+      </g>
+    </svg>
+  </div>
+
+  <!-- ── 4-POINTED STAR SPARKLE ── -->
+  <div class="layer" style="top:0;height:100%;z-index:7;pointer-events:none;">
+    <svg viewBox="0 0 1440 900" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <filter id="starGlow"><feGaussianBlur stdDeviation="4" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+      </defs>
+      <!-- Main 4-pointed star -->
+      <g transform="translate(1108,685)" filter="url(#starGlow)">
+        <path d="M0,-24 Q3,-4 24,0 Q3,4 0,24 Q-3,4 -24,0 Q-3,-4 0,-24Z" fill="white" opacity="0.96"/>
+        <circle cx="0" cy="0" r="6"  fill="white" opacity="0.45"/>
+        <circle cx="0" cy="0" r="12" fill="white" opacity="0.15"/>
+      </g>
+      <!-- Small water sparkles -->
+      <circle cx="958"  cy="585" r="2.4" fill="rgba(255,255,255,0.58)"/>
+      <circle cx="1328" cy="524" r="1.9" fill="rgba(255,255,255,0.52)"/>
+      <circle cx="1192" cy="464" r="1.7" fill="rgba(255,255,255,0.48)"/>
+      <circle cx="1078" cy="542" r="1.5" fill="rgba(255,255,255,0.44)"/>
+    </svg>
+  </div>
+
+  <!-- ── FOREGROUND: ferns + pampas grass ── -->
+  <div class="layer" style="bottom:0;height:56%;z-index:9;" data-speed="0.5">
+    <svg viewBox="0 0 1440 504" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+
+      <!-- FERN 1 – large, front-left -->
+      <g transform="translate(36,445)">
+        <path d="M0,0 Q28,-38 52,-92" stroke="#1a3520" stroke-width="2.5" fill="none"/>
+        <path d="M9,-13 Q30,-8 40,-20"  stroke="#1a3520" stroke-width="2" fill="none"/>
+        <path d="M17,-27 Q38,-22 50,-33" stroke="#1a3520" stroke-width="2" fill="none"/>
+        <path d="M25,-41 Q46,-35 58,-47" stroke="#1a3520" stroke-width="2" fill="none"/>
+        <path d="M33,-55 Q54,-49 65,-61" stroke="#1a3520" stroke-width="1.8" fill="none"/>
+        <path d="M41,-69 Q60,-63 70,-76" stroke="#1a3520" stroke-width="1.5" fill="none"/>
+        <path d="M48,-81 Q65,-76 73,-88" stroke="#1a3520" stroke-width="1.3" fill="none"/>
+        <path d="M9,-13 Q-12,-8 -23,-20"  stroke="#152e1c" stroke-width="2" fill="none"/>
+        <path d="M17,-27 Q-4,-22 -16,-33" stroke="#152e1c" stroke-width="2" fill="none"/>
+        <path d="M25,-41 Q5,-35 -7,-47"   stroke="#152e1c" stroke-width="2" fill="none"/>
+        <path d="M33,-55 Q13,-49 3,-61"   stroke="#152e1c" stroke-width="1.8" fill="none"/>
+        <path d="M41,-69 Q23,-63 15,-76"  stroke="#152e1c" stroke-width="1.5" fill="none"/>
+        <polygon points="0,0 9,-13 40,-20 17,-27 50,-33 25,-41 58,-47 33,-55 65,-61 41,-69 70,-76 48,-81 52,-92 47,-85 43,-77 37,-66 31,-57 24,-48 18,-39 12,-30 6,-20 0,0" fill="#1a3520" opacity="0.62"/>
+        <polygon points="0,0 9,-13 -23,-20 17,-27 -16,-33 25,-41 -7,-47 33,-55 3,-61 41,-69 15,-76 48,-81 52,-92 47,-85 43,-77 35,-65 27,-55 19,-45 11,-35 5,-22 0,0" fill="#142c18" opacity="0.56"/>
+      </g>
+
+      <!-- FERN 2 -->
+      <g transform="translate(112,462) rotate(-14)">
+        <path d="M0,0 Q24,-34 44,-80" stroke="#162e1c" stroke-width="2.3" fill="none"/>
+        <path d="M7,-11 Q26,-7 35,-18"  stroke="#162e1c" stroke-width="1.9" fill="none"/>
+        <path d="M14,-23 Q33,-19 43,-30" stroke="#162e1c" stroke-width="1.9" fill="none"/>
+        <path d="M20,-35 Q39,-30 49,-41" stroke="#162e1c" stroke-width="1.7" fill="none"/>
+        <path d="M26,-48 Q44,-43 53,-55" stroke="#162e1c" stroke-width="1.5" fill="none"/>
+        <path d="M32,-61 Q49,-56 57,-68" stroke="#162e1c" stroke-width="1.3" fill="none"/>
+        <path d="M7,-11 Q-11,-7 -21,-18"  stroke="#1a3520" stroke-width="1.9" fill="none"/>
+        <path d="M14,-23 Q-4,-19 -14,-30" stroke="#1a3520" stroke-width="1.7" fill="none"/>
+        <path d="M20,-35 Q2,-30 -8,-41"   stroke="#1a3520" stroke-width="1.5" fill="none"/>
+        <path d="M26,-48 Q10,-43 2,-55"   stroke="#1a3520" stroke-width="1.3" fill="none"/>
+        <polygon points="0,0 7,-11 35,-18 14,-23 43,-30 20,-35 49,-41 26,-48 53,-55 32,-61 44,-80 39,-73 35,-62 29,-53 23,-44 17,-35 11,-26 5,-16 0,0" fill="#162e1c" opacity="0.56"/>
+        <polygon points="0,0 7,-11 -21,-18 14,-23 -14,-30 20,-35 -8,-41 26,-48 2,-55 32,-61 44,-80 39,-73 35,-62 27,-52 19,-43 11,-33 5,-22 0,0" fill="#1a3520" opacity="0.52"/>
+      </g>
+
+      <!-- FERN 3 (smaller behind) -->
+      <g transform="translate(174,472) rotate(-5)">
+        <path d="M0,0 Q20,-28 36,-64" stroke="#1a3520" stroke-width="2" fill="none"/>
+        <path d="M6,-9 Q22,-5 30,-15"  stroke="#1a3520" stroke-width="1.7" fill="none"/>
+        <path d="M11,-20 Q27,-16 35,-26" stroke="#1a3520" stroke-width="1.6" fill="none"/>
+        <path d="M16,-31 Q32,-27 40,-37" stroke="#1a3520" stroke-width="1.5" fill="none"/>
+        <path d="M21,-43 Q36,-38 44,-49" stroke="#1a3520" stroke-width="1.3" fill="none"/>
+        <path d="M6,-9 Q-10,-5 -18,-15"  stroke="#152c1a" stroke-width="1.7" fill="none"/>
+        <path d="M11,-20 Q-4,-16 -12,-26" stroke="#152c1a" stroke-width="1.5" fill="none"/>
+        <path d="M16,-31 Q2,-27 -5,-37"   stroke="#152c1a" stroke-width="1.3" fill="none"/>
+      </g>
+
+      <!-- PAMPAS GRASS plume 1 – tallest -->
+      <g transform="translate(54,385)">
+        <path d="M0,58 Q-2,20 0,-78" stroke="#283826" stroke-width="2.4" fill="none"/>
+        <!-- Plume feathers -->
+        <path d="M-15,-59 Q1,-90 16,-59"  stroke="rgba(218,228,198,0.68)" stroke-width="1.9" fill="none"/>
+        <path d="M-18,-64 Q-4,-96 9,-64"  stroke="rgba(218,228,198,0.62)" stroke-width="1.6" fill="none"/>
+        <path d="M-11,-60 Q4,-88 18,-58"  stroke="rgba(210,222,192,0.62)" stroke-width="1.5" fill="none"/>
+        <path d="M-20,-69 Q-8,-100 4,-69" stroke="rgba(212,225,195,0.58)" stroke-width="1.4" fill="none"/>
+        <path d="M-9,-57 Q6,-84 21,-54"   stroke="rgba(206,220,190,0.58)" stroke-width="1.4" fill="none"/>
+        <path d="M-22,-71 Q-12,-103 -2,-71" stroke="rgba(213,226,196,0.53)" stroke-width="1.2" fill="none"/>
+        <path d="M3,-57 Q15,-83 25,-53"   stroke="rgba(206,220,190,0.53)" stroke-width="1.2" fill="none"/>
+        <ellipse cx="2"  cy="-77" rx="15" ry="21" fill="rgba(210,224,194,0.44)" transform="rotate(-4)"/>
+        <ellipse cx="0"  cy="-71" rx="11" ry="17" fill="rgba(220,234,204,0.5)"/>
+        <!-- Leaf blades -->
+        <path d="M0,58 Q-8,28 -12,-8"  stroke="#1e3024" stroke-width="2" fill="none"/>
+        <path d="M0,58 Q5,26 10,-13"   stroke="#243826" stroke-width="2" fill="none"/>
+        <path d="M0,58 Q-14,24 -18,-18" stroke="#192c20" stroke-width="1.5" fill="none"/>
+      </g>
+
+      <!-- Plume 2 -->
+      <g transform="translate(90,404)">
+        <path d="M0,48 Q3,16 2,-63" stroke="#283826" stroke-width="2.2" fill="none"/>
+        <path d="M-12,-46 Q2,-74 14,-46" stroke="rgba(214,227,197,0.66)" stroke-width="1.7" fill="none"/>
+        <path d="M-15,-50 Q-3,-78 9,-50"  stroke="rgba(210,224,194,0.60)" stroke-width="1.5" fill="none"/>
+        <path d="M-8,-44 Q6,-70 18,-42"   stroke="rgba(205,220,190,0.58)" stroke-width="1.4" fill="none"/>
+        <path d="M-16,-53 Q-6,-82 4,-53"  stroke="rgba(210,224,194,0.53)" stroke-width="1.2" fill="none"/>
+        <path d="M0,-42 Q12,-68 22,-40"   stroke="rgba(205,220,190,0.53)" stroke-width="1.2" fill="none"/>
+        <ellipse cx="3"  cy="-60" rx="13" ry="18" fill="rgba(210,224,194,0.42)" transform="rotate(3)"/>
+        <ellipse cx="2"  cy="-55" rx="10" ry="14" fill="rgba(218,231,202,0.48)"/>
+        <path d="M0,48 Q-6,20 -10,-14" stroke="#1e3024" stroke-width="1.8" fill="none"/>
+        <path d="M0,48 Q6,18 9,-16"    stroke="#243826" stroke-width="1.8" fill="none"/>
+      </g>
+
+      <!-- Plume 3 – shorter, front -->
+      <g transform="translate(26,415)">
+        <path d="M0,52 Q-3,21 -2,-53" stroke="#283826" stroke-width="2" fill="none"/>
+        <path d="M-10,-38 Q2,-62 12,-38" stroke="rgba(214,227,197,0.63)" stroke-width="1.6" fill="none"/>
+        <path d="M-12,-42 Q-2,-66 8,-42"  stroke="rgba(210,224,194,0.57)" stroke-width="1.4" fill="none"/>
+        <path d="M-6,-36 Q6,-58 16,-36"   stroke="rgba(205,220,190,0.55)" stroke-width="1.3" fill="none"/>
+        <ellipse cx="1"  cy="-50" rx="11" ry="15" fill="rgba(208,222,192,0.40)"/>
+        <ellipse cx="0"  cy="-45" rx="8"  ry="12" fill="rgba(218,231,202,0.45)"/>
+        <path d="M0,52 Q-5,19 -8,-10" stroke="#1e3024" stroke-width="1.5" fill="none"/>
+        <path d="M0,52 Q4,17 7,-14"   stroke="#243826" stroke-width="1.5" fill="none"/>
+      </g>
+
+      <!-- Plume 4 – leaning -->
+      <g transform="translate(138,424) rotate(-10)">
+        <path d="M0,44 Q-4,14 -6,-58" stroke="#263625" stroke-width="2" fill="none"/>
+        <path d="M-14,-40 Q-2,-68 10,-40" stroke="rgba(212,226,196,0.61)" stroke-width="1.5" fill="none"/>
+        <path d="M-16,-44 Q-6,-72 6,-44"  stroke="rgba(208,222,192,0.56)" stroke-width="1.3" fill="none"/>
+        <path d="M-8,-38 Q4,-64 14,-36"   stroke="rgba(204,219,190,0.53)" stroke-width="1.2" fill="none"/>
+        <ellipse cx="-3" cy="-55" rx="12" ry="16" fill="rgba(208,222,192,0.39)"/>
+        <ellipse cx="-4" cy="-50" rx="9"  ry="13" fill="rgba(216,229,200,0.44)"/>
+        <path d="M0,44 Q-7,17 -12,-12" stroke="#1e3024" stroke-width="1.5" fill="none"/>
+        <path d="M0,44 Q3,14 4,-16"    stroke="#243826" stroke-width="1.5" fill="none"/>
+      </g>
+
+      <!-- Tall grass blades between plumes -->
+      <path d="M168,504 Q161,442 152,378" stroke="#1a2e1e" stroke-width="2"   fill="none"/>
+      <path d="M194,504 Q188,447 185,387" stroke="#1e3222" stroke-width="1.8" fill="none"/>
+      <path d="M148,504 Q140,444 132,377" stroke="#1a2e1e" stroke-width="1.6" fill="none"/>
+      <path d="M220,504 Q214,450 212,394" stroke="#1e3222" stroke-width="1.5" fill="none"/>
+      <path d="M125,504 Q118,447 112,382" stroke="#162a1c" stroke-width="1.4" fill="none"/>
+    </svg>
+  </div>
+
   <div class="hero-text">
     <h1>Where Sky Meets Sea</h1>
     <p>Discover the endless horizon</p>
   </div>
   <div class="scroll-hint">Scroll</div>
-
 </section>
 
 <!-- CONTENT -->
@@ -611,48 +592,17 @@
 <footer>&copy; 2026 Ocean Horizon &nbsp;&bull;&nbsp; Where the sea calls you home</footer>
 
 <script>
-  // ── Animated CSS diamond sparkles ──
-  (function() {
-    const c = document.getElementById('sparkles');
-    for (let i = 0; i < 65; i++) {
-      const s = document.createElement('div');
-      s.className = 'sp';
-      const size  = Math.random() * 11 + 4;
-      const dur   = (1.4 + Math.random() * 2.6) + 's';
-      const delay = '-' + (Math.random() * 4.5).toFixed(2) + 's';
-      const op    = (0.5 + Math.random() * 0.5).toFixed(2);
-      s.style.cssText = `width:${size}px;height:${size}px;left:${Math.random()*100}%;top:${Math.random()*88}%;--d:${dur};--delay:${delay};--op:${op};`;
-      c.appendChild(s);
-    }
-  })();
-
-  // ── Parallax + ambient wave animation ──
-  const layers     = document.querySelectorAll('[data-speed]');
-  const waveLayers = document.querySelectorAll('.wave-layer');
+  const layers = document.querySelectorAll('[data-speed]');
   let t = 0;
-
   function animate() {
-    t += 0.007;
+    t += 0.006;
     const sy = window.scrollY;
-
     layers.forEach(el => {
       const sp = parseFloat(el.dataset.speed);
       el.style.transform = `translateY(${sy * sp}px)`;
     });
-
-    waveLayers.forEach((w, i) => {
-      const sp  = parseFloat(w.dataset.speed || 0.25);
-      const py  = sy * sp;
-      const amp = [9, 13, 16][i] ?? 11;
-      const fr  = [1.0, 0.75, 0.6][i] ?? 0.9;
-      const dx  = Math.sin(t * fr + i * 1.15) * amp;
-      const dy  = Math.cos(t * fr * 0.65 + i) * 5;
-      w.style.transform = `translateY(${py + dy}px) translateX(${dx}px)`;
-    });
-
     requestAnimationFrame(animate);
   }
-
   animate();
 </script>
 </body>
