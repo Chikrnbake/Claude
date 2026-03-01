@@ -21,7 +21,7 @@ body {
   z-index: 1;
   background: url('sky-background.png') center / cover no-repeat;
   /* Fallback gradient if PNG is missing */
-  background-color: #060c24;
+  background-color: #080e28;
 }
 
 /* Layer 2 – Ocean WebGL canvas */

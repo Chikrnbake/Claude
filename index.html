@@ -123,7 +123,7 @@
       color *= clamp(vign, 0., 1.);
 
       /* ── Soft top-fade so ocean blends into the sky layer ── */
-      float topFade = smoothstep(0.0, 0.20, uv.y);
+      float topFade = smoothstep(0.0, 0.30, uv.y);
       color *= topFade;
 
       gl_FragColor = vec4(color, 1.0);
