@@ -57,72 +57,130 @@
       return 130. * dot(m, g);
     }
 
-    /* ── 5-stop ocean colour palette ────────────────────────────── */
-    vec3 oceanColor(float t) {
-      t = clamp(t, 0., 1.);
-      vec3 c0 = vec3(0.03, 0.04, 0.16); /* deep void indigo          */
-      vec3 c1 = vec3(0.04, 0.13, 0.30); /* dark navy-indigo          */
-      vec3 c2 = vec3(0.04, 0.34, 0.44); /* dark teal                 */
-      vec3 c3 = vec3(0.06, 0.58, 0.56); /* mid bright teal           */
-      vec3 c4 = vec3(0.15, 0.84, 0.75); /* pale cyan-teal (surface)  */
-      float s = t * 4.;
-      float f = smoothstep(0., 1., fract(s));
-      vec3 ca, cb;
-      if      (s < 1.) { ca = c0; cb = c1; }
-      else if (s < 2.) { ca = c1; cb = c2; }
-      else if (s < 3.) { ca = c2; cb = c3; }
-      else             { ca = c3; cb = c4; }
-      return mix(ca, cb, f);
-    }
-
     /* ── Main ────────────────────────────────────────────────────── */
     void main() {
       vec2 uv = gl_FragCoord.xy / u_resolution.xy;
       float aspect = u_resolution.x / u_resolution.y;
       vec2 p = vec2(uv.x * aspect, uv.y);
 
-      /* Animate faster while scrolling */
-      float spd = 0.10 + u_speed * 0.14;
-      float t   = u_time * spd;
+      /* ── Scroll-driven energy: swirls intensify as tide rises ── */
+      float energy = 0.08 + u_speed * 0.22;
+      float t = u_time * energy;
 
-      /* ── Level-1 domain warp ── */
-      vec2 q = vec2(
-        snoise(p * 1.8 + vec2(0.00, 0.00) + t * 0.40),
-        snoise(p * 1.8 + vec2(5.20, 1.30) + t * 0.37)
+      /* ═══════════════════════════════════════════════════════════
+         FLOW MAP  —  two-phase cycling prevents texture stretching.
+         The flow field is built from noise-derived angles so the
+         entity swirls organically rather than translating linearly.
+      ═══════════════════════════════════════════════════════════ */
+      float cycle = mod(u_time * 0.04, 1.0);
+      float phase = abs(2.0 * cycle - 1.0);   /* 0→1→0 triangle wave */
+
+      vec2 flow1 = vec2(
+        snoise(p * 0.65 + t * 0.11),
+        snoise(p * 0.65 + vec2(7.3, 2.1) + t * 0.09)
       );
-
-      /* ── Level-2 domain warp ── */
-      vec2 r = vec2(
-        snoise(p * 1.6 + 4.2*q + vec2(1.70, 9.20) + t * 0.22),
-        snoise(p * 1.6 + 4.2*q + vec2(8.30, 2.80) + t * 0.20)
+      vec2 flow2 = vec2(
+        snoise(p * 0.65 + vec2(3.7, 11.2) + t * 0.11),
+        snoise(p * 0.65 + vec2(13.1, 5.9) + t * 0.09)
       );
+      vec2 flow = mix(flow1, flow2, phase);
 
-      /* ── Warped base noise value → [0,1] ── */
-      float f = snoise(p * 1.4 + 4.0*r + t * 0.10) * 0.5 + 0.5;
+      /* Swirl harder near the bottom-left (cliff base)            */
+      float cliffDist  = length(uv - vec2(0.15, 0.20));
+      float swirlMask  = smoothstep(0.65, 0.08, cliffDist);
+      float flowStr    = 0.11 + swirlMask * 0.14 + u_speed * 0.07;
 
-      /* ── Additional detail octaves ── */
-      float detail = snoise(p * 5.0  + t * 0.28 + 2.0*q) * 0.18;
-      float fine   = snoise(p * 11.0 + t * 0.45)          * 0.07;
-      float n = clamp(f + detail + fine, 0., 1.);
+      vec2 advP = p + flow * flowStr;
 
-      /* ── Base ocean colour ── */
-      vec3 color = oceanColor(n);
+      /* ═══════════════════════════════════════════════════════════
+         MULTI-OCTAVE NOISE FIELD (4 octaves, fBm-style)
+      ═══════════════════════════════════════════════════════════ */
+      float n = 0.0;
+      n += snoise(advP * 2.2  + t * 0.24)                        * 0.500;
+      n += snoise(advP * 4.4  + t * 0.18 + vec2(5.2, 1.3))      * 0.250;
+      n += snoise(advP * 8.8  + t * 0.13 + vec2(9.7, 3.1))      * 0.125;
+      n += snoise(advP * 17.6 + t * 0.09)                        * 0.0625;
+      n = n * 0.5 + 0.5;               /* remap –0.9375…+0.9375 → ~0…1 */
 
-      /* ── Caustic / shimmer speckles on the peaks ── */
-      float shimmer = snoise(p * 18.0 + t * 0.9 + 3.0*r);
-      shimmer = pow(max(shimmer, 0.), 4.) * 0.55;
-      color += vec3(shimmer * 0.14, shimmer * 0.52, shimmer * 0.48);
+      /* ═══════════════════════════════════════════════════════════
+         TOPOGRAPHIC / ISOHYPSE CONTOUR LINES
+         Quantise the noise into "elevation bands" so the surface
+         reads like glowing topo-lines of swirling liquid ink.
+      ═══════════════════════════════════════════════════════════ */
+      float levels    = 14.0 + u_speed * 8.0;
+      float contourV  = n * levels;
 
-      /* ── Slow rolling light bands (subsurface scattering feel) ── */
-      float band = snoise(vec2(p.x * 0.5 + t * 0.07, p.y * 1.8)) * 0.5 + 0.5;
-      color = mix(color, color * 1.28, band * 0.16);
+      /* Triangle wave: sharp peak at each integer iso-level       */
+      float topo      = abs(fract(contourV) - 0.5) * 2.0;
+
+      /* Crisp line where topo ≈ 0 (integer crossing)              */
+      float lineW     = 0.045 + u_speed * 0.025;
+      float line      = 1.0 - smoothstep(0.0, lineW, topo);
+
+      /* Broader glow halo around lines                            */
+      float glowW     = 0.18;
+      float glow      = (1.0 - smoothstep(0.0, glowW, topo)) * 0.35;
+
+      /* ═══════════════════════════════════════════════════════════
+         IRIDESCENCE / CHROMATIC ABERRATION
+         Offset the contour threshold for R and B channels so the
+         edges of every ripple shimmer between deep cyan and bright
+         aquamarine — an "oil-slick on dark water" effect.
+      ═══════════════════════════════════════════════════════════ */
+      float aberr     = 0.22 + u_speed * 0.15;
+
+      float topo_r    = abs(fract(contourV + aberr) - 0.5) * 2.0;
+      float topo_b    = abs(fract(contourV - aberr) - 0.5) * 2.0;
+      float line_r    = 1.0 - smoothstep(0.0, lineW, topo_r);
+      float line_b    = 1.0 - smoothstep(0.0, lineW, topo_b);
+
+      /* ═══════════════════════════════════════════════════════════
+         COLOUR COMPOSITION
+      ═══════════════════════════════════════════════════════════ */
+
+      /* Base: deep indigo void                                    */
+      vec3 voidCol      = vec3(0.02, 0.03, 0.12);
+
+      /* Teal palette for lines                                    */
+      vec3 deepCyan     = vec3(0.00, 0.48, 0.56);
+      vec3 brightAqua   = vec3(0.06, 0.88, 0.72);
+      vec3 paleHighlight = vec3(0.22, 1.00, 0.86);
+
+      /* Colour varies with the underlying noise value             */
+      float colorMix    = smoothstep(0.30, 0.70, n);
+      vec3  lineCol     = mix(deepCyan, brightAqua, colorMix);
+
+      /* Assemble: start from void, add glow, then lines           */
+      vec3 color = voidCol;
+
+      /* Broad glow halo (uniform teal, no aberration)             */
+      color += deepCyan * 0.32 * glow;
+
+      /* Main contour lines with per-channel chromatic split       */
+      color.r += lineCol.r * 0.65 * line_r;
+      color.g += lineCol.g * 1.00 * line;
+      color.b += lineCol.b * 1.15 * line_b;
+
+      /* ── Caustic sparkle highlights on the brightest lines ──── */
+      float caustic = snoise(advP * 24.0 + t * 0.55);
+      caustic = pow(max(caustic, 0.0), 5.0) * 0.75;
+      color += paleHighlight * caustic * (line * 0.7 + glow * 0.2);
+
+      /* ── Extra swirl brightness near cliff base ──────────────── */
+      float swirlGlow = snoise(advP * 3.2 + t * 0.38) * swirlMask;
+      color += brightAqua * max(swirlGlow, 0.0) * 0.28;
+
+      /* ── Secondary fine contours (half-frequency detail) ─────── */
+      float fineTopo = abs(fract(contourV * 0.5 + 0.25) - 0.5) * 2.0;
+      float fineLine = 1.0 - smoothstep(0.0, 0.03, fineTopo);
+      color += deepCyan * 0.18 * fineLine;
 
       /* ── Radial vignette ── */
       vec2  vp   = uv - 0.5;
-      float vign = 1.0 - dot(vp, vp) * 1.3;
-      color *= clamp(vign, 0., 1.);
+      float vign = 1.0 - dot(vp, vp) * 1.1;
+      color *= clamp(vign, 0.0, 1.0);
 
-      /* ── Soft top-fade so ocean blends into the sky layer ── */
+      /* ── Soft top-fade so ocean blends into sky layer ────────── */
       float topFade = smoothstep(0.0, 0.30, uv.y);
       color *= topFade;
 

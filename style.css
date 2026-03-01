@@ -37,12 +37,15 @@ body {
   transform: translateY(42%);
 }
 
-/* Layer 3 – Cliffs foreground (PNG with transparency over ocean) */
+/* Layer 3 – Cliffs / mountains foreground (bottom-left quarter) */
 #cliffs {
   position: fixed;
-  inset: 0;
+  bottom: 0;
+  left: 0;
+  width: 50%;
+  height: 50%;
   z-index: 3;
-  background: url('cliffs-foreground.png') center / cover no-repeat;
+  background: url('cliffs-foreground.png') bottom left / contain no-repeat;
   pointer-events: none; /* let clicks fall through to content below  */
 }
 
