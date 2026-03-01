@@ -1,0 +1,250 @@
+/* ═══════════════════════════════════════════════════════════════════
+   Reset & base
+═══════════════════════════════════════════════════════════════════ */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: auto; }           /* JS controls scroll timing */
+body {
+  font-family: 'Georgia', serif;
+  background: #060e28;
+  overflow-x: hidden;
+  /* body must have height > 100vh so the page is scrollable          */
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Fixed scene layers  (z-index 1 → 2 → 3)
+═══════════════════════════════════════════════════════════════════ */
+
+/* Layer 1 – Sky */
+#sky {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  background: url('sky-background.png') center / cover no-repeat;
+  /* Fallback gradient if PNG is missing */
+  background-color: #060c24;
+}
+
+/* Layer 2 – Ocean WebGL canvas */
+#ocean {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  will-change: transform;
+  /* Starts pushed 42 % below the viewport; JS adjusts on scroll */
+  transform: translateY(42%);
+}
+
+/* Layer 3 – Cliffs foreground (PNG with transparency over ocean) */
+#cliffs {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  background: url('cliffs-foreground.png') center / cover no-repeat;
+  pointer-events: none; /* let clicks fall through to content below  */
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Navigation
+═══════════════════════════════════════════════════════════════════ */
+.nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 40px;
+  background: rgba(5, 14, 34, 0.12);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.nav-logo {
+  color: #fff;
+  font-size: 1.2rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.nav-links a {
+  color: rgba(255, 255, 255, 0.85);
+  text-decoration: none;
+  margin-left: 28px;
+  font-size: 0.88rem;
+  letter-spacing: 0.07em;
+  transition: color 0.3s;
+}
+.nav-links a:hover { color: #70f0d8; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   Scroll driver  —  creates the scrollable space that moves the
+   fixed layers reactively.  Sits above the fixed layers (z-index 4)
+   so hero text is visible, but has a transparent background so the
+   scene shows through.
+═══════════════════════════════════════════════════════════════════ */
+.scroll-driver {
+  position: relative;
+  z-index: 4;
+  height: 200vh;          /* 200 vh of scroll room                   */
+  pointer-events: none;   /* let mouse events reach the canvas below  */
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Hero text
+═══════════════════════════════════════════════════════════════════ */
+.hero-content {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-end;   /* right-aligned, over the ocean           */
+  padding-right: 8%;
+  pointer-events: none;
+}
+
+.hero-content h1 {
+  color: #fff;
+  font-size: clamp(2.2rem, 5vw, 4.5rem);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  line-height: 1.15;
+  text-align: right;
+  text-shadow: 0 2px 40px rgba(0, 80, 120, 0.55),
+               0 0  80px rgba(0, 160, 180, 0.25);
+}
+
+.hero-content p {
+  color: rgba(190, 255, 240, 0.80);
+  font-size: clamp(0.85rem, 1.5vw, 1.05rem);
+  letter-spacing: 0.18em;
+  margin-top: 1rem;
+  text-align: right;
+}
+
+.scroll-hint {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  margin-top: 3rem;
+  color: rgba(190, 255, 240, 0.55);
+  font-size: 0.70rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  animation: fadeUD 2.2s ease-in-out infinite;
+}
+.scroll-line {
+  display: block;
+  width: 1px;
+  height: 38px;
+  background: linear-gradient(180deg, rgba(190,255,240,0.55), transparent);
+  align-self: flex-end;
+}
+@keyframes fadeUD {
+  0%,100% { opacity: 0.4; transform: translateY(0); }
+  50%      { opacity: 1;   transform: translateY(8px); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Content  —  solid dark background covers fixed layers below
+═══════════════════════════════════════════════════════════════════ */
+.content {
+  position: relative;
+  z-index: 10;
+  background: linear-gradient(180deg,
+    rgba(6,14,40,0) 0%,
+    rgba(6,14,40,0.96) 5%,
+    #060e28 12%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 100px 40px 80px;
+  gap: 0;
+}
+
+.section-intro {
+  text-align: center;
+  max-width: 620px;
+  margin-bottom: 52px;
+}
+.section-intro h2 {
+  color: #18d8b0;
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  letter-spacing: 0.10em;
+  text-shadow: 0 0 35px rgba(24, 216, 176, 0.45);
+  margin-bottom: 1.4rem;
+}
+.section-intro p {
+  color: rgba(180, 240, 220, 0.82);
+  line-height: 1.85;
+  font-size: 1.08rem;
+}
+
+/* Cards */
+.card-row {
+  display: flex;
+  gap: 28px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 52px;
+}
+.card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(24, 216, 176, 0.22);
+  border-radius: 14px;
+  padding: 28px 26px;
+  width: 255px;
+  backdrop-filter: blur(8px);
+  transition: transform 0.35s, border-color 0.35s, box-shadow 0.35s;
+}
+.card:hover {
+  transform: translateY(-7px);
+  border-color: rgba(24, 216, 176, 0.55);
+  box-shadow: 0 8px 30px rgba(24, 216, 176, 0.15);
+}
+.card-icon { font-size: 1.9rem; margin-bottom: 12px; }
+.card h3 {
+  color: #18d8b0;
+  font-size: 0.98rem;
+  letter-spacing: 0.09em;
+  margin-bottom: 9px;
+}
+.card p {
+  color: rgba(180, 240, 220, 0.68);
+  font-size: 0.88rem;
+  line-height: 1.72;
+}
+
+/* CTA */
+.cta-btn {
+  padding: 13px 42px;
+  border: 2px solid #18d8b0;
+  background: transparent;
+  color: #18d8b0;
+  font-size: 0.88rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: 5px;
+  transition: background 0.3s, color 0.3s, box-shadow 0.3s;
+}
+.cta-btn:hover {
+  background: #18d8b0;
+  color: #060e28;
+  box-shadow: 0 0 28px rgba(24, 216, 176, 0.45);
+}
+
+/* Footer */
+footer {
+  position: relative;
+  z-index: 10;
+  background: #030a18;
+  color: rgba(180, 240, 220, 0.30);
+  text-align: center;
+  padding: 28px;
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+}
