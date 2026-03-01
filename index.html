@@ -4,729 +4,205 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Ocean Horizon</title>
-  <style>
-    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-    html { scroll-behavior: smooth; }
-    body { font-family: 'Georgia', serif; background: #050e22; overflow-x: hidden; }
+  <link rel="stylesheet" href="style.css" />
 
-    .scene { position: relative; width: 100%; height: 100vh; overflow: hidden; }
+  <!-- ═══════════════════════════════════════════════════════════════
+       GLSL SHADERS  (type is unrecognised by the browser so the
+       content is never executed — we read it as text in script.js)
+  ═══════════════════════════════════════════════════════════════ -->
 
-    /* Sky: dark navy upper-left → teal lower-right (diagonal) */
-    .sky {
-      position: absolute; inset: 0; z-index: 0;
-      background: linear-gradient(140deg,
-        #060c22 0%,  #081630 20%,
-        #0b2e4a 38%, #0c5060 54%,
-        #0d7070 68%, #0e9080 82%, #10a888 100%);
+  <script id="vert-shader" type="x-shader/x-vertex">
+    attribute vec2 a_pos;
+    void main() {
+      gl_Position = vec4(a_pos, 0.0, 1.0);
     }
+  </script>
 
-    /* All SVG layers share these rules */
-    .L {
-      position: absolute; left: 0; top: 0;
-      width: 100%; height: 100%;
-      pointer-events: none;
-      will-change: transform;
-    }
-    .L svg { display: block; width: 100%; height: 100%; }
+  <script id="frag-shader" type="x-shader/x-fragment">
+    precision highp float;
 
-    /* Nav */
-    .nav {
-      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 18px 40px;
-      background: rgba(5,14,34,0.12);
-      backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-    }
-    .nav-logo { color: #fff; font-size: 1.2rem; letter-spacing: 0.14em; text-transform: uppercase; }
-    .nav-links a { color: rgba(255,255,255,0.85); text-decoration: none; margin-left: 28px; font-size: 0.88rem; letter-spacing: 0.07em; transition: color 0.3s; }
-    .nav-links a:hover { color: #70f0d8; }
+    uniform float u_time;       /* seconds since page load               */
+    uniform float u_speed;      /* scroll velocity, clamped 0–1          */
+    uniform vec2  u_resolution; /* canvas pixel dimensions               */
 
-    /* Hero text – positioned over the ocean (right side) */
-    .hero-text {
-      position: absolute; bottom: 22%; left: 70%;
-      transform: translateX(-50%); z-index: 20;
-      text-align: center; white-space: nowrap;
-    }
-    .hero-text h1 {
-      color: #fff; font-size: clamp(1.8rem,4vw,3.5rem);
-      letter-spacing: 0.2em; text-transform: uppercase;
-      text-shadow: 0 2px 40px rgba(0,80,100,0.55);
-    }
-    .hero-text p {
-      color: rgba(190,255,240,0.8); font-size: clamp(0.8rem,1.4vw,1rem);
-      letter-spacing: 0.16em; margin-top: 0.6rem;
-    }
+    /* ── Simplex 2-D Noise (Gustavson / McEwan) ─────────────────── */
+    vec3 mod289v3(vec3 x){ return x - floor(x*(1./289.))*289.; }
+    vec2 mod289v2(vec2 x){ return x - floor(x*(1./289.))*289.; }
+    vec3 permute(vec3 x){ return mod289v3(((x*34.)+1.)*x); }
 
-    .scroll-hint {
-      position: absolute; bottom: 5%; left: 70%;
-      transform: translateX(-50%); z-index: 20;
-      display: flex; flex-direction: column; align-items: center; gap: 8px;
-      color: rgba(190,255,240,0.6); font-size: 0.72rem;
-      letter-spacing: 0.22em; text-transform: uppercase;
-      animation: fadeUD 2s ease-in-out infinite;
-    }
-    .scroll-hint::after {
-      content: ''; display: block; width: 1px; height: 38px;
-      background: linear-gradient(180deg, rgba(190,255,240,0.6), transparent);
-    }
-    @keyframes fadeUD {
-      0%,100% { opacity: 0.45; transform: translateX(-50%) translateY(0); }
-      50%      { opacity: 1;    transform: translateX(-50%) translateY(7px); }
+    float snoise(vec2 v) {
+      const vec4 C = vec4( 0.211324865405187,  0.366025403784439,
+                          -0.577350269189626,  0.024390243902439);
+      vec2 i  = floor(v + dot(v, C.yy));
+      vec2 x0 = v - i + dot(i, C.xx);
+      vec2 i1  = (x0.x > x0.y) ? vec2(1.,0.) : vec2(0.,1.);
+      vec4 x12 = x0.xyxy + C.xxzz;
+      x12.xy  -= i1;
+      i = mod289v2(i);
+      vec3 p = permute(permute(i.y + vec3(0.,i1.y,1.))
+                               + i.x + vec3(0.,i1.x,1.));
+      vec3 m = max(.5 - vec3(dot(x0,x0),
+                             dot(x12.xy,x12.xy),
+                             dot(x12.zw,x12.zw)), 0.);
+      m = m * m;
+      m = m * m;
+      vec3 x  = 2.*fract(p*C.www) - 1.;
+      vec3 h  = abs(x) - .5;
+      vec3 ox = floor(x + .5);
+      vec3 a0 = x - ox;
+      m *= 1.79284291400159 - 0.85373472095314*(a0*a0 + h*h);
+      vec3 g;
+      g.x  = a0.x *x0.x   + h.x *x0.y;
+      g.yz = a0.yz*x12.xz + h.yz*x12.yw;
+      return 130. * dot(m, g);
     }
 
-    /* Content section below the hero */
-    .content-section {
-      position: relative; z-index: 10; min-height: 100vh;
-      display: flex; align-items: center; justify-content: center; flex-direction: column;
-      padding: 80px 40px;
-      background: linear-gradient(180deg, transparent 0%, rgba(5,14,34,0.94) 12%, #050e22 40%);
+    /* ── 5-stop ocean colour palette ────────────────────────────── */
+    vec3 oceanColor(float t) {
+      t = clamp(t, 0., 1.);
+      vec3 c0 = vec3(0.03, 0.04, 0.16); /* deep void indigo          */
+      vec3 c1 = vec3(0.04, 0.13, 0.30); /* dark navy-indigo          */
+      vec3 c2 = vec3(0.04, 0.34, 0.44); /* dark teal                 */
+      vec3 c3 = vec3(0.06, 0.58, 0.56); /* mid bright teal           */
+      vec3 c4 = vec3(0.15, 0.84, 0.75); /* pale cyan-teal (surface)  */
+      float s = t * 4.;
+      float f = smoothstep(0., 1., fract(s));
+      vec3 ca, cb;
+      if      (s < 1.) { ca = c0; cb = c1; }
+      else if (s < 2.) { ca = c1; cb = c2; }
+      else if (s < 3.) { ca = c2; cb = c3; }
+      else             { ca = c3; cb = c4; }
+      return mix(ca, cb, f);
     }
-    .content-section h2 {
-      color: #18d8b0; font-size: clamp(1.8rem,4vw,3rem); text-align: center;
-      letter-spacing: 0.1em; text-shadow: 0 0 35px rgba(24,216,176,0.45); margin-bottom: 1.5rem;
+
+    /* ── Main ────────────────────────────────────────────────────── */
+    void main() {
+      vec2 uv = gl_FragCoord.xy / u_resolution.xy;
+      float aspect = u_resolution.x / u_resolution.y;
+      vec2 p = vec2(uv.x * aspect, uv.y);
+
+      /* Animate faster while scrolling */
+      float spd = 0.10 + u_speed * 0.14;
+      float t   = u_time * spd;
+
+      /* ── Level-1 domain warp ── */
+      vec2 q = vec2(
+        snoise(p * 1.8 + vec2(0.00, 0.00) + t * 0.40),
+        snoise(p * 1.8 + vec2(5.20, 1.30) + t * 0.37)
+      );
+
+      /* ── Level-2 domain warp ── */
+      vec2 r = vec2(
+        snoise(p * 1.6 + 4.2*q + vec2(1.70, 9.20) + t * 0.22),
+        snoise(p * 1.6 + 4.2*q + vec2(8.30, 2.80) + t * 0.20)
+      );
+
+      /* ── Warped base noise value → [0,1] ── */
+      float f = snoise(p * 1.4 + 4.0*r + t * 0.10) * 0.5 + 0.5;
+
+      /* ── Additional detail octaves ── */
+      float detail = snoise(p * 5.0  + t * 0.28 + 2.0*q) * 0.18;
+      float fine   = snoise(p * 11.0 + t * 0.45)          * 0.07;
+      float n = clamp(f + detail + fine, 0., 1.);
+
+      /* ── Base ocean colour ── */
+      vec3 color = oceanColor(n);
+
+      /* ── Caustic / shimmer speckles on the peaks ── */
+      float shimmer = snoise(p * 18.0 + t * 0.9 + 3.0*r);
+      shimmer = pow(max(shimmer, 0.), 4.) * 0.55;
+      color += vec3(shimmer * 0.14, shimmer * 0.52, shimmer * 0.48);
+
+      /* ── Slow rolling light bands (subsurface scattering feel) ── */
+      float band = snoise(vec2(p.x * 0.5 + t * 0.07, p.y * 1.8)) * 0.5 + 0.5;
+      color = mix(color, color * 1.28, band * 0.16);
+
+      /* ── Radial vignette ── */
+      vec2  vp   = uv - 0.5;
+      float vign = 1.0 - dot(vp, vp) * 1.3;
+      color *= clamp(vign, 0., 1.);
+
+      /* ── Soft top-fade so ocean blends into the sky layer ── */
+      float topFade = smoothstep(0.0, 0.30, uv.y);
+      color *= topFade;
+
+      gl_FragColor = vec4(color, 1.0);
     }
-    .content-section > p {
-      color: rgba(180,240,220,0.82); max-width: 580px;
-      line-height: 1.85; text-align: center; font-size: 1.08rem;
-    }
-    .card-row { display: flex; gap: 28px; margin-top: 48px; flex-wrap: wrap; justify-content: center; }
-    .card {
-      background: rgba(255,255,255,0.04); border: 1px solid rgba(24,216,176,0.22);
-      border-radius: 14px; padding: 28px 26px; width: 255px;
-      backdrop-filter: blur(8px);
-      transition: transform 0.35s, border-color 0.35s, box-shadow 0.35s;
-    }
-    .card:hover { transform: translateY(-7px); border-color: rgba(24,216,176,0.55); box-shadow: 0 8px 30px rgba(24,216,176,0.15); }
-    .card-icon { font-size: 1.9rem; margin-bottom: 12px; }
-    .card h3 { color: #18d8b0; font-size: 0.98rem; letter-spacing: 0.09em; margin-bottom: 9px; }
-    .card p  { color: rgba(180,240,220,0.68); font-size: 0.88rem; line-height: 1.72; }
-    .cta-btn {
-      margin-top: 48px; padding: 13px 40px;
-      border: 2px solid #18d8b0; background: transparent; color: #18d8b0;
-      font-size: 0.88rem; letter-spacing: 0.15em; text-transform: uppercase;
-      cursor: pointer; border-radius: 5px;
-      transition: background 0.3s, color 0.3s, box-shadow 0.3s;
-    }
-    .cta-btn:hover { background: #18d8b0; color: #050e22; box-shadow: 0 0 25px rgba(24,216,176,0.4); }
-    footer {
-      background: #030a18; color: rgba(180,240,220,0.3);
-      text-align: center; padding: 28px; font-size: 0.78rem; letter-spacing: 0.12em;
-    }
-  </style>
+  </script>
 </head>
 <body>
 
-<nav class="nav">
-  <div class="nav-logo">Ocean Horizon</div>
-  <div class="nav-links">
-    <a href="#">Explore</a><a href="#">Gallery</a><a href="#">Journey</a><a href="#">Contact</a>
-  </div>
-</nav>
-
-<section class="scene" id="hero">
-  <div class="sky"></div>
-
-  <!-- ═══════════════════════════════════════════
-       LAYER 2 – CONTRAIL / WISPY CLOUDS  (z-index 2)
-  ═══════════════════════════════════════════ -->
-  <div class="L" style="z-index:2;">
-    <svg viewBox="0 0 1440 900" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <filter id="cb1"><feGaussianBlur stdDeviation="2.5"/></filter>
-        <filter id="cb2"><feGaussianBlur stdDeviation="5.5"/></filter>
-      </defs>
-      <!-- Outer soft glow -->
-      <g filter="url(#cb2)" opacity="0.48">
-        <path d="M700,55 Q780,30 855,55 Q910,75 940,110 Q960,135 952,162"
-              stroke="rgba(210,238,255,0.65)" stroke-width="10" fill="none" stroke-linecap="round"/>
-      </g>
-      <!-- Main contrail body -->
-      <g filter="url(#cb1)" opacity="0.78">
-        <path d="M710,58 Q788,32 862,58 Q915,77 944,114 Q962,140 955,168"
-              stroke="rgba(215,240,255,0.7)" stroke-width="6" fill="none" stroke-linecap="round"/>
-        <!-- Feathery wisps left of contrail -->
-        <path d="M722,62 Q755,44 785,58 Q808,68 815,82"
-              stroke="rgba(210,236,255,0.52)" stroke-width="3" fill="none" stroke-linecap="round"/>
-        <path d="M740,66 Q772,50 800,64"
-              stroke="rgba(208,234,252,0.42)" stroke-width="2.2" fill="none" stroke-linecap="round"/>
-        <path d="M758,74 Q790,58 818,72"
-              stroke="rgba(205,232,250,0.38)" stroke-width="2" fill="none" stroke-linecap="round"/>
-        <path d="M778,84 Q808,68 836,82"
-              stroke="rgba(205,232,250,0.34)" stroke-width="1.8" fill="none" stroke-linecap="round"/>
-        <path d="M800,96 Q828,80 856,94"
-              stroke="rgba(205,232,250,0.30)" stroke-width="1.6" fill="none" stroke-linecap="round"/>
-        <!-- Fade-left tail -->
-        <path d="M706,56 Q675,46 648,52 Q628,56 618,50"
-              stroke="rgba(210,236,255,0.28)" stroke-width="3" fill="none" stroke-linecap="round"/>
-        <path d="M698,60 Q670,50 644,56"
-              stroke="rgba(210,236,255,0.20)" stroke-width="2" fill="none" stroke-linecap="round"/>
-      </g>
-    </svg>
-  </div>
-
-  <!-- ═══════════════════════════════════════════
-       LAYER 3 – OCEAN  (z-index 3)
-  ═══════════════════════════════════════════ -->
-  <div class="L" style="z-index:3;" data-speed="0.04">
-    <svg viewBox="0 0 1440 900" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="og" x1="0.3" y1="0" x2="1" y2="1">
-          <stop offset="0%"   stop-color="#0a5848"/>
-          <stop offset="30%"  stop-color="#0c7060"/>
-          <stop offset="60%"  stop-color="#0e9078"/>
-          <stop offset="85%"  stop-color="#10a888"/>
-          <stop offset="100%" stop-color="#12b898"/>
-        </linearGradient>
-      </defs>
-
-      <!-- Ocean fills the right portion; left boundary follows cliff edge -->
-      <!-- Base fill from approx cliff edge to right -->
-      <polygon points="
-        500,0 1440,0 1440,900 0,900
-        30,870 120,812 218,752 305,692
-        368,632 422,574 468,516 505,458
-        535,400 558,342 574,284 578,226
-        568,170 546,114 512,60 475,18"
-        fill="url(#og)"/>
-
-      <!-- ── Low-poly teal facets ── -->
-      <!-- Horizon strip (fine facets) -->
-      <polygon points="560,12 660,0  760,12 660,26"   fill="#0e8070" opacity="0.52"/>
-      <polygon points="755,8  870,0  985,8  870,20"   fill="#108880" opacity="0.46"/>
-      <polygon points="980,12 1095,0 1210,12 1095,26" fill="#0e8070" opacity="0.50"/>
-      <polygon points="1205,8 1322,0 1440,6 1440,20 1322,20" fill="#108880" opacity="0.46"/>
-
-      <!-- Row 2 -->
-      <polygon points="530,40 660,20 790,40 660,62"    fill="#0d8878" opacity="0.46"/>
-      <polygon points="782,36 922,16 1062,36 922,58"   fill="#0fa088" opacity="0.42"/>
-      <polygon points="1054,40 1192,20 1330,40 1192,62" fill="#0d8878" opacity="0.46"/>
-      <polygon points="1322,36 1382,16 1440,26 1440,58 1382,58" fill="#0fa088" opacity="0.42"/>
-
-      <!-- Row 3 -->
-      <polygon points="505,80 650,52 795,80 650,110"    fill="#0e9882" opacity="0.38"/>
-      <polygon points="786,76 942,48 1098,76 942,106"   fill="#10a890" opacity="0.34"/>
-      <polygon points="1088,80 1242,52 1396,80 1242,110" fill="#0e9882" opacity="0.38"/>
-
-      <!-- Row 4 -->
-      <polygon points="478,132 638,94  798,132 638,172"  fill="#10a890" opacity="0.30"/>
-      <polygon points="788,126 958,88  1128,126 958,166" fill="#0e9882" opacity="0.32"/>
-      <polygon points="1118,132 1286,94 1440,118 1440,170 1286,170" fill="#10a890" opacity="0.30"/>
-
-      <!-- Row 5 – larger -->
-      <polygon points="452,196 628,148 804,196 628,246"   fill="#12b098" opacity="0.24"/>
-      <polygon points="794,190 980,142 1166,190 980,240"  fill="#10a090" opacity="0.26"/>
-      <polygon points="1156,196 1298,148 1440,172 1440,244 1298,244" fill="#12b098" opacity="0.24"/>
-
-      <!-- Row 6 – large foreground -->
-      <polygon points="418,272 612,214 806,272 612,332"   fill="#12b098" opacity="0.20"/>
-      <polygon points="796,266 1000,208 1204,266 1000,326" fill="#0fa890" opacity="0.22"/>
-      <polygon points="1194,272 1318,214 1440,238 1440,330 1318,330" fill="#12b098" opacity="0.20"/>
-
-      <!-- Row 7 – very large -->
-      <polygon points="382,360 590,292 798,360 590,430"   fill="#10a888" opacity="0.16"/>
-      <polygon points="788,354 1004,286 1220,354 1004,424" fill="#0e9880" opacity="0.18"/>
-
-      <!-- Bright shimmer facets -->
-      <polygon points="870,22  918,8  966,22  918,36"   fill="#22d0a8" opacity="0.50"/>
-      <polygon points="1178,16 1228,4 1278,16 1228,28"  fill="#1ec8a0" opacity="0.44"/>
-      <polygon points="1006,58 1060,40 1114,58 1060,76" fill="#22d0a8" opacity="0.40"/>
-      <polygon points="1300,52 1356,34 1412,52 1356,70" fill="#1ec8a0" opacity="0.36"/>
-      <polygon points="810,104 872,84  934,104 872,124" fill="#22d0a8" opacity="0.34"/>
-      <polygon points="1122,98 1186,78 1250,98 1186,118" fill="#1ec8a0" opacity="0.30"/>
-
-      <!-- Shimmer wave lines -->
-      <path d="M520,44 Q690,34 860,44 Q1030,54 1200,44 Q1370,34 1440,40"
-            stroke="rgba(160,255,220,0.20)" stroke-width="2" fill="none"/>
-      <path d="M498,92 Q690,78 882,92 Q1074,106 1266,92 Q1400,82 1440,88"
-            stroke="rgba(160,255,220,0.16)" stroke-width="2" fill="none"/>
-      <path d="M474,152 Q690,134 906,152 Q1122,170 1338,152 Q1420,142 1440,148"
-            stroke="rgba(160,255,220,0.13)" stroke-width="2" fill="none"/>
-      <path d="M448,224 Q690,202 932,224 Q1174,246 1416,224 Q1436,222 1440,222"
-            stroke="rgba(160,255,220,0.10)" stroke-width="2" fill="none"/>
-    </svg>
-  </div>
-
-  <!-- ═══════════════════════════════════════════
-       LAYER 4 – RECEDING HEADLANDS  (z-index 4)
-  ═══════════════════════════════════════════ -->
-  <div class="L" style="z-index:4;" data-speed="0.02">
-    <svg viewBox="0 0 1440 900" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <filter id="hf"><feGaussianBlur stdDeviation="3"/></filter>
-      </defs>
-      <!-- Distant headlands receding into the right – small dark silhouettes -->
-      <!-- Far headland (rightmost, smallest) -->
-      <polygon points="1100,340 1160,310 1220,330 1240,360 1200,380 1140,370"
-               fill="#0a1e38" opacity="0.65" filter="url(#hf)"/>
-      <!-- Mid headland -->
-      <polygon points="900,370 980,340 1060,355 1080,390 1030,415 950,405"
-               fill="#0c2240" opacity="0.72" filter="url(#hf)"/>
-      <!-- Closer headland -->
-      <polygon points="720,400 820,362 912,378 934,420 868,450 772,440"
-               fill="#0e2848" opacity="0.80"/>
-      <!-- These headlands have their own small facets -->
-      <polygon points="730,404 800,372 850,382 855,405 810,420 750,415" fill="#102e50" opacity="0.7"/>
-      <polygon points="800,375 855,358 895,368 900,390 858,405 812,398" fill="#0e2848" opacity="0.75"/>
-    </svg>
-  </div>
-
-  <!-- ═══════════════════════════════════════════
-       LAYER 5 – MAIN CLIFF FACE  (z-index 5)
-  ═══════════════════════════════════════════ -->
-  <div class="L" style="z-index:5;" data-speed="0">
-    <svg viewBox="0 0 1440 900" xmlns="http://www.w3.org/2000/svg">
-
-      <!-- ── CLIFF BASE SHAPE ──
-           Cliff occupies left portion; right edge runs diagonally from
-           (570,0) at top down to (40,900) at bottom               -->
-      <polygon id="cliffBase" points="
-        0,0 570,0 548,60 522,124 494,188 464,250 434,310
-        404,368 372,424 336,480 295,536 248,592 196,648
-        138,704  76,760  14,816  0,900"
-        fill="#080f22"/>
-
-      <!-- ══ UPPER CLIFF FACETS ══ -->
-      <!-- Topmost dark cap -->
-      <polygon points="0,0 180,0 162,74 105,116  50,96  0,76"  fill="#05091a" opacity="0.97"/>
-      <polygon points="55,0 152,0 166,56 134,86  74,76  44,46" fill="#08132c" opacity="0.94"/>
-
-      <!-- Main diagonal face panels – upper -->
-      <polygon points="158,0 355,0 344,56 314,86 254,82 160,56"  fill="#091630" opacity="0.93"/>
-      <polygon points="312,0 494,0 482,46 452,80 390,86 316,60"  fill="#0c1e3e" opacity="0.91"/>
-      <polygon points="470,0 570,0 560,42 538,72 485,80 474,56"  fill="#0a1b3a" opacity="0.94"/>
-
-      <!-- Upper light-catching faces -->
-      <polygon points="92,76 228,46 286,86 265,136 183,158  94,126"  fill="#183558" opacity="0.87"/>
-      <polygon points="228,50 362,22 420,62 398,115 316,138 230,104" fill="#1d3d65" opacity="0.84"/>
-      <polygon points="336,26 470,4  525,44 506,98  422,120 338,86"  fill="#112038" opacity="0.92"/>
-      <polygon points="458,6  548,0  558,32 538,68  472,85  462,52"  fill="#163050" opacity="0.88"/>
-
-      <!-- ══ MID CLIFF FACETS ══ -->
-      <!-- Deep shadow left edge -->
-      <polygon points="0,76 115,76 144,126 134,186  74,206  0,176"  fill="#04081a" opacity="0.97"/>
-      <polygon points="0,172 86,172 114,222 104,286  50,306  0,276"  fill="#05091a" opacity="0.96"/>
-      <polygon points="0,272 76,276 102,332  90,396  36,416  0,386"  fill="#04081a" opacity="0.97"/>
-      <polygon points="0,382 60,378  86,434  74,502  22,522  0,492"  fill="#05091a" opacity="0.96"/>
-      <polygon points="0,488 44,484  68,540  56,608   6,628  0,608"  fill="#04081a" opacity="0.97"/>
-
-      <!-- Mid stepping diagonal facets -->
-      <polygon points="86,124 194,98  242,142 230,208 160,232  88,198"  fill="#0f2240" opacity="0.92"/>
-      <polygon points="176,98  302,72  355,118 342,186 268,212 178,176" fill="#193456" opacity="0.87"/>
-      <polygon points="272,74  396,48  450,96  435,166 358,192 274,156" fill="#122748" opacity="0.92"/>
-      <polygon points="368,50  490,26  545,74  528,146 449,172 370,134" fill="#1e3c62" opacity="0.84"/>
-      <polygon points="460,28  554,6   608,52  590,124 510,150 462,112" fill="#142e50" opacity="0.90"/>
-
-      <!-- Mid highlight strips -->
-      <polygon points="95,126 134,112 153,134 134,158  95,153"  fill="#265070" opacity="0.74"/>
-      <polygon points="207,100 246,86  265,110 246,133 207,129" fill="#224870" opacity="0.70"/>
-      <polygon points="322,76 362,60  382,86  362,110 322,106"  fill="#265070" opacity="0.74"/>
-      <polygon points="440,50 480,33  500,60  480,84  440,80"   fill="#224870" opacity="0.70"/>
-      <polygon points="552,6  560,0   570,18  558,40  545,38"   fill="#1e4268" opacity="0.68"/>
-
-      <!-- ══ LOWER-MID CLIFF ══ -->
-      <polygon points="48,350 160,326 204,378 190,452 118,476  50,446"  fill="#0c1e38" opacity="0.93"/>
-      <polygon points="136,316 256,288 300,344 284,420 210,446 138,414" fill="#152c50" opacity="0.89"/>
-      <polygon points="224,282 348,254 394,312 376,390 300,418 226,384" fill="#1b3860" opacity="0.84"/>
-      <polygon points="314,248 440,220 488,280 468,360 390,388 316,352" fill="#112648" opacity="0.92"/>
-      <polygon points="404,212 532,182 582,244 560,326 480,354 406,316" fill="#193458" opacity="0.87"/>
-      <polygon points="494,174 554,156 598,208 576,286 508,312 496,274" fill="#1e3c62" opacity="0.84"/>
-
-      <!-- Lower-mid highlights -->
-      <polygon points="144,318 184,302 204,328 184,352 144,347" fill="#265070" opacity="0.66"/>
-      <polygon points="264,288 306,270 328,298 306,323 264,318" fill="#224870" opacity="0.62"/>
-      <polygon points="386,254 430,235 452,264 430,290 386,285" fill="#265070" opacity="0.66"/>
-      <polygon points="510,218 554,198 576,228 554,254 510,249" fill="#224870" opacity="0.62"/>
-
-      <!-- ══ LOWER CLIFF ══ -->
-      <polygon points="0,488  40,482  62,505  50,532  0,522"   fill="#04081a" opacity="0.97"/>
-      <polygon points="0,582  26,578  46,600  26,624  0,618"   fill="#04081a" opacity="0.97"/>
-      <polygon points="0,676  14,672  32,695  14,718  0,712"   fill="#04081a" opacity="0.97"/>
-      <polygon points="30,462  136,444  172,490 158,560  90,582  32,552"  fill="#06101e" opacity="0.95"/>
-      <polygon points="108,432  214,410  252,458 236,530 165,554 110,522" fill="#0c1e38" opacity="0.93"/>
-      <polygon points="190,400  300,376  340,426 322,500 248,524 192,490" fill="#142c4c" opacity="0.89"/>
-      <polygon points="274,366  388,340  430,392 411,467 334,492 276,456" fill="#1a3660" opacity="0.84"/>
-      <polygon points="360,330  476,302  520,356 500,432 420,458 362,420" fill="#0d2238" opacity="0.92"/>
-      <polygon points="448,292  566,262  612,318 590,396 508,422 450,382" fill="#152c4c" opacity="0.89"/>
-
-      <!-- Lower highlights -->
-      <polygon points="38,464  78,450  96,474  78,498  38,492"  fill="#244e6e" opacity="0.62"/>
-      <polygon points="116,434 158,418 177,443 158,468 116,462" fill="#205068" opacity="0.58"/>
-      <polygon points="196,402 240,384 260,411 240,436 196,430" fill="#244e6e" opacity="0.62"/>
-      <polygon points="280,368 326,348 348,376 326,403 280,397" fill="#205068" opacity="0.58"/>
-      <polygon points="366,330 414,310 437,340 414,367 366,361" fill="#244e6e" opacity="0.62"/>
-      <polygon points="454,291 504,270 527,301 504,328 454,322" fill="#205068" opacity="0.58"/>
-
-      <!-- ══ SHADOW CREVICE LINES ══ -->
-      <!-- Horizontal bands -->
-      <polygon points="0,144 113,128 132,147 111,160  0,174"  fill="#02060f" opacity="0.88"/>
-      <polygon points="0,242  98,226 117,245  95,258  0,272"  fill="#02060f" opacity="0.88"/>
-      <polygon points="0,340  82,326 101,345  79,358  0,372"  fill="#02060f" opacity="0.88"/>
-      <polygon points="0,438  66,426  85,445  62,458  0,452"  fill="#02060f" opacity="0.88"/>
-      <polygon points="0,536  50,524  68,543  46,556  0,550"  fill="#02060f" opacity="0.88"/>
-      <!-- Diagonal upper -->
-      <polygon points="113,126 172,104 192,126 172,150 113,148" fill="#02060f" opacity="0.82"/>
-      <polygon points="220,101 282,78  304,104 282,128 220,126" fill="#02060f" opacity="0.82"/>
-      <polygon points="330,76  394,52  416,80  394,104 330,102" fill="#02060f" opacity="0.82"/>
-      <polygon points="442,50  506,26  528,54  506,78  442,76"  fill="#02060f" opacity="0.82"/>
-      <!-- Diagonal mid -->
-      <polygon points="140,226 206,200 228,228 206,254 140,250" fill="#02060f" opacity="0.79"/>
-      <polygon points="258,196 326,168 350,198 326,226 258,222" fill="#02060f" opacity="0.79"/>
-      <polygon points="378,162 450,133 474,165 450,193 378,189" fill="#02060f" opacity="0.79"/>
-      <polygon points="500,126 574,96  598,130 574,160 500,156" fill="#02060f" opacity="0.79"/>
-      <!-- Diagonal lower -->
-      <polygon points="110,430 176,404 200,434 176,460 110,456" fill="#02060f" opacity="0.77"/>
-      <polygon points="200,396 270,368 296,400 270,428 200,424" fill="#02060f" opacity="0.77"/>
-      <polygon points="292,360 365,330 392,364 365,392 292,388" fill="#02060f" opacity="0.77"/>
-      <polygon points="386,322 462,291 490,326 462,356 386,350" fill="#02060f" opacity="0.77"/>
-      <polygon points="480,282 558,250 586,286 558,316 480,310" fill="#02060f" opacity="0.77"/>
-
-      <!-- Subtle teal-rock patches -->
-      <polygon points="0,149 82,138 103,161 82,184  0,174"          fill="#0b2234" opacity="0.72"/>
-      <polygon points="0,257 64,246  85,269 64,292  0,282"          fill="#0b2234" opacity="0.72"/>
-      <polygon points="108,138 162,118 184,144 162,168 108,163"     fill="#0d2638" opacity="0.70"/>
-      <polygon points="228,104 288,84  310,112 288,138 228,134"     fill="#0b2234" opacity="0.72"/>
-      <polygon points="350,78  413,56  436,86  413,112 350,108"     fill="#0d2638" opacity="0.70"/>
-      <polygon points="474,50  540,28  562,56  540,82  474,78"      fill="#0b2234" opacity="0.72"/>
-    </svg>
-  </div>
-
-  <!-- ═══════════════════════════════════════════
-       LAYER 6 – ROAD  (z-index 6)
-  ═══════════════════════════════════════════ -->
-  <div class="L" style="z-index:6;">
-    <svg viewBox="0 0 1440 900" xmlns="http://www.w3.org/2000/svg">
-      <!-- Road dark edge -->
-      <path d="M12,835 Q50,794 88,754 Q128,714 154,675
-               Q174,641 170,606 Q164,568 180,537
-               Q200,508 240,489 Q284,470 332,461
-               Q386,451 442,443 Q502,433 556,421
-               Q612,407 661,391 Q714,372 763,350"
-            stroke="rgba(32,55,86,0.94)" stroke-width="18"
-            fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-      <!-- Road surface -->
-      <path d="M12,835 Q50,794 88,754 Q128,714 154,675
-               Q174,641 170,606 Q164,568 180,537
-               Q200,508 240,489 Q284,470 332,461
-               Q386,451 442,443 Q502,433 556,421
-               Q612,407 661,391 Q714,372 763,350"
-            stroke="rgba(80,118,158,0.90)" stroke-width="11"
-            fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-      <!-- Centre dashes -->
-      <path d="M12,835 Q50,794 88,754 Q128,714 154,675
-               Q174,641 170,606 Q164,568 180,537
-               Q200,508 240,489 Q284,470 332,461
-               Q386,451 442,443 Q502,433 556,421
-               Q612,407 661,391 Q714,372 763,350"
-            stroke="rgba(172,208,240,0.50)" stroke-width="2.2"
-            fill="none" stroke-linecap="round"
-            stroke-dasharray="16,13" stroke-linejoin="round"/>
-    </svg>
-  </div>
-
-  <!-- ═══════════════════════════════════════════
-       LAYER 7 – MIST at cliff base  (z-index 7)
-  ═══════════════════════════════════════════ -->
-  <div class="L" style="z-index:7;" data-speed="0.08">
-    <svg viewBox="0 0 1440 900" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <filter id="mf"><feGaussianBlur stdDeviation="16"/></filter>
-        <radialGradient id="mg" cx="40%" cy="50%" r="55%">
-          <stop offset="0%"   stop-color="rgba(155,220,200,0.75)"/>
-          <stop offset="50%"  stop-color="rgba(155,220,200,0.40)"/>
-          <stop offset="100%" stop-color="rgba(155,220,200,0)"/>
-        </radialGradient>
-      </defs>
-      <ellipse cx="370" cy="530" rx="460" ry="65"
-               fill="url(#mg)" filter="url(#mf)" opacity="0.90"/>
-      <ellipse cx="240" cy="538" rx="300" ry="45"
-               fill="rgba(175,232,215,0.55)" filter="url(#mf)" opacity="0.75"/>
-      <ellipse cx="520" cy="526" rx="280" ry="42"
-               fill="rgba(145,215,195,0.40)" filter="url(#mf)" opacity="0.68"/>
-    </svg>
-  </div>
-
-  <!-- ═══════════════════════════════════════════
-       LAYER 8 – SAILBOATS  (z-index 8)
-  ═══════════════════════════════════════════ -->
-  <div class="L" style="z-index:8;">
-    <svg viewBox="0 0 1440 900" xmlns="http://www.w3.org/2000/svg">
-      <!-- Far boat 1 -->
-      <g transform="translate(890,410)" opacity="0.66">
-        <line x1="0" y1="-24" x2="0" y2="7"   stroke="rgba(150,208,192,0.9)" stroke-width="1"/>
-        <polygon points="0,-22 0,5 -12,5"       fill="rgba(150,208,192,0.85)"/>
-        <polygon points="0,-15 0,4  9,4"        fill="rgba(130,192,178,0.70)"/>
-        <ellipse cx="0" cy="8" rx="10" ry="2.2" fill="rgba(150,208,192,0.80)"/>
-      </g>
-      <!-- Far boat 2 -->
-      <g transform="translate(1068,398)" opacity="0.70">
-        <line x1="0" y1="-28" x2="0" y2="8"   stroke="rgba(150,208,192,0.9)" stroke-width="1.1"/>
-        <polygon points="0,-26 0,6 -14,6"       fill="rgba(150,208,192,0.88)"/>
-        <polygon points="0,-18 0,5 10,5"        fill="rgba(130,192,178,0.72)"/>
-        <ellipse cx="0" cy="9" rx="12" ry="2.5" fill="rgba(150,208,192,0.82)"/>
-      </g>
-      <!-- Closer boat -->
-      <g transform="translate(1292,430)" opacity="0.84">
-        <line x1="0" y1="-50" x2="0" y2="14"  stroke="rgba(175,226,212,0.95)" stroke-width="1.4"/>
-        <polygon points="0,-48 0,11 -23,11"    fill="rgba(175,226,212,0.92)"/>
-        <polygon points="0,-33 0,9  18,9"      fill="rgba(150,208,192,0.78)"/>
-        <ellipse cx="0" cy="15" rx="20" ry="3.6" fill="rgba(175,226,212,0.88)"/>
-        <path d="M-20,15 Q0,21 20,15"          fill="rgba(130,192,178,0.55)"/>
-        <!-- Reflection -->
-        <g opacity="0.26" transform="translate(0,17) scale(1,-0.44)">
-          <polygon points="0,-48 0,11 -23,11" fill="rgba(175,226,212,0.7)"/>
-          <polygon points="0,-33 0,9  18,9"   fill="rgba(150,208,192,0.6)"/>
-        </g>
-      </g>
-    </svg>
-  </div>
-
-  <!-- ═══════════════════════════════════════════
-       LAYER 9 – 4-POINTED STAR + SPARKLES  (z-index 9)
-  ═══════════════════════════════════════════ -->
-  <div class="L" style="z-index:9;">
-    <svg viewBox="0 0 1440 900" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <filter id="sg">
-          <feGaussianBlur stdDeviation="5" result="b"/>
-          <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-        </filter>
-      </defs>
-      <!-- Main 4-pointed star -->
-      <g transform="translate(1148,700)" filter="url(#sg)">
-        <path d="M0,-26 Q3.5,-4.5 26,0 Q3.5,4.5 0,26 Q-3.5,4.5 -26,0 Q-3.5,-4.5 0,-26Z"
-              fill="white" opacity="0.97"/>
-        <circle cx="0" cy="0" r="7"  fill="white" opacity="0.42"/>
-        <circle cx="0" cy="0" r="14" fill="white" opacity="0.14"/>
-      </g>
-      <!-- Smaller sparkles -->
-      <circle cx="1000" cy="600" r="2.2" fill="rgba(255,255,255,0.56)"/>
-      <circle cx="1350" cy="542" r="1.8" fill="rgba(255,255,255,0.50)"/>
-      <circle cx="1210" cy="480" r="1.6" fill="rgba(255,255,255,0.46)"/>
-      <circle cx="1100" cy="558" r="1.4" fill="rgba(255,255,255,0.42)"/>
-    </svg>
-  </div>
-
-  <!-- ═══════════════════════════════════════════
-       LAYER 10 – FOREGROUND VEGETATION  (z-index 10)
-  ═══════════════════════════════════════════ -->
-  <div class="L" style="z-index:10;" data-speed="0.48">
-    <svg viewBox="0 0 1440 900" xmlns="http://www.w3.org/2000/svg">
-
-      <!-- ── FERNS ── -->
-      <!-- Fern 1 – large front -->
-      <g transform="translate(38,855)">
-        <path d="M0,0 Q30,-40 55,-96" stroke="#1a3520" stroke-width="2.5" fill="none"/>
-        <path d="M9,-13 Q30,-8  41,-20" stroke="#1a3520" stroke-width="2"   fill="none"/>
-        <path d="M17,-27 Q39,-22 51,-34" stroke="#1a3520" stroke-width="2"   fill="none"/>
-        <path d="M26,-42 Q47,-36 60,-49" stroke="#1a3520" stroke-width="2"   fill="none"/>
-        <path d="M34,-57 Q55,-51 67,-64" stroke="#1a3520" stroke-width="1.8" fill="none"/>
-        <path d="M42,-71 Q62,-65 72,-78" stroke="#1a3520" stroke-width="1.5" fill="none"/>
-        <path d="M49,-84 Q67,-78 75,-90" stroke="#1a3520" stroke-width="1.2" fill="none"/>
-        <path d="M9,-13 Q-12,-8 -23,-20"  stroke="#152e1c" stroke-width="2"   fill="none"/>
-        <path d="M17,-27 Q-5,-22 -17,-34" stroke="#152e1c" stroke-width="2"   fill="none"/>
-        <path d="M26,-42 Q4,-36 -8,-49"   stroke="#152e1c" stroke-width="2"   fill="none"/>
-        <path d="M34,-57 Q13,-51 2,-64"   stroke="#152e1c" stroke-width="1.8" fill="none"/>
-        <path d="M42,-71 Q23,-65 14,-78"  stroke="#152e1c" stroke-width="1.5" fill="none"/>
-        <polygon points="0,0 9,-13 41,-20 17,-27 51,-34 26,-42 60,-49 34,-57 67,-64 42,-71 72,-78 49,-84 55,-96 50,-88 45,-79 38,-68 31,-58 24,-48 17,-39 10,-28 4,-17 0,0"
-                 fill="#1a3520" opacity="0.64"/>
-        <polygon points="0,0 9,-13 -23,-20 17,-27 -17,-34 26,-42 -8,-49 34,-57 2,-64 42,-71 14,-78 49,-84 55,-96 50,-88 45,-79 36,-67 27,-56 18,-45 10,-34 4,-20 0,0"
-                 fill="#142c18" opacity="0.58"/>
-      </g>
-
-      <!-- Fern 2 -->
-      <g transform="translate(116,872) rotate(-15)">
-        <path d="M0,0 Q26,-36 46,-82" stroke="#162e1c" stroke-width="2.3" fill="none"/>
-        <path d="M7,-11 Q26,-7  36,-18" stroke="#162e1c" stroke-width="1.9" fill="none"/>
-        <path d="M14,-23 Q33,-19 43,-30" stroke="#162e1c" stroke-width="1.8" fill="none"/>
-        <path d="M21,-36 Q40,-31 50,-43" stroke="#162e1c" stroke-width="1.6" fill="none"/>
-        <path d="M27,-49 Q45,-44 54,-57" stroke="#162e1c" stroke-width="1.4" fill="none"/>
-        <path d="M33,-62 Q50,-57 58,-70" stroke="#162e1c" stroke-width="1.2" fill="none"/>
-        <path d="M7,-11 Q-11,-7 -21,-18"  stroke="#1a3520" stroke-width="1.9" fill="none"/>
-        <path d="M14,-23 Q-5,-19 -15,-30" stroke="#1a3520" stroke-width="1.7" fill="none"/>
-        <path d="M21,-36 Q2,-31  -9,-43"  stroke="#1a3520" stroke-width="1.5" fill="none"/>
-        <path d="M27,-49 Q10,-44  1,-57"  stroke="#1a3520" stroke-width="1.3" fill="none"/>
-        <polygon points="0,0 7,-11 36,-18 14,-23 43,-30 21,-36 50,-43 27,-49 54,-57 33,-62 46,-82 41,-74 36,-63 30,-53 23,-44 17,-34 11,-24 5,-14 0,0"
-                 fill="#162e1c" opacity="0.58"/>
-        <polygon points="0,0 7,-11 -21,-18 14,-23 -15,-30 21,-36 -9,-43 27,-49 1,-57 33,-62 46,-82 41,-74 36,-63 28,-52 20,-43 12,-33 5,-21 0,0"
-                 fill="#1a3520" opacity="0.53"/>
-      </g>
-
-      <!-- Fern 3 (smaller, behind) -->
-      <g transform="translate(178,878) rotate(-5)">
-        <path d="M0,0 Q22,-30 38,-66" stroke="#1a3520" stroke-width="2" fill="none"/>
-        <path d="M6,-10 Q22,-6  30,-16" stroke="#1a3520" stroke-width="1.7" fill="none"/>
-        <path d="M12,-21 Q28,-17 36,-28" stroke="#1a3520" stroke-width="1.6" fill="none"/>
-        <path d="M17,-32 Q33,-28 41,-39" stroke="#1a3520" stroke-width="1.5" fill="none"/>
-        <path d="M22,-44 Q37,-39 45,-51" stroke="#1a3520" stroke-width="1.3" fill="none"/>
-        <path d="M6,-10 Q-10,-6 -18,-16"  stroke="#152c1a" stroke-width="1.7" fill="none"/>
-        <path d="M12,-21 Q-4,-17 -13,-28" stroke="#152c1a" stroke-width="1.5" fill="none"/>
-        <path d="M17,-32 Q3,-28  -5,-39"  stroke="#152c1a" stroke-width="1.3" fill="none"/>
-      </g>
-
-      <!-- ── PAMPAS GRASS PLUMES ── -->
-      <!-- Plume 1 – tallest -->
-      <g transform="translate(56,790)">
-        <path d="M0,60 Q-2,20 0,-82" stroke="#283826" stroke-width="2.4" fill="none"/>
-        <path d="M-16,-62 Q0,-94 16,-62"  stroke="rgba(220,230,200,0.68)" stroke-width="1.9" fill="none"/>
-        <path d="M-19,-67 Q-5,-99 9,-67"  stroke="rgba(218,228,198,0.62)" stroke-width="1.6" fill="none"/>
-        <path d="M-12,-63 Q4,-92 18,-60"  stroke="rgba(212,224,194,0.62)" stroke-width="1.5" fill="none"/>
-        <path d="M-21,-72 Q-9,-104 3,-72" stroke="rgba(214,226,196,0.58)" stroke-width="1.4" fill="none"/>
-        <path d="M-10,-60 Q6,-88 22,-57"  stroke="rgba(208,221,192,0.58)" stroke-width="1.4" fill="none"/>
-        <path d="M-23,-74 Q-13,-107 -3,-74" stroke="rgba(214,226,196,0.52)" stroke-width="1.2" fill="none"/>
-        <path d="M3,-60 Q15,-86 26,-56"   stroke="rgba(208,221,192,0.52)" stroke-width="1.2" fill="none"/>
-        <ellipse cx="2"  cy="-80" rx="16" ry="22" fill="rgba(212,225,196,0.44)" transform="rotate(-4)"/>
-        <ellipse cx="0"  cy="-74" rx="12" ry="18" fill="rgba(222,235,205,0.50)"/>
-        <path d="M0,60 Q-8,28 -13,-10" stroke="#1e3024" stroke-width="2"   fill="none"/>
-        <path d="M0,60 Q5,26  10,-14"  stroke="#243826" stroke-width="2"   fill="none"/>
-        <path d="M0,60 Q-15,24 -19,-20" stroke="#192c20" stroke-width="1.5" fill="none"/>
-      </g>
-
-      <!-- Plume 2 -->
-      <g transform="translate(94,810)">
-        <path d="M0,50 Q3,16 2,-66" stroke="#283826" stroke-width="2.2" fill="none"/>
-        <path d="M-13,-48 Q2,-76 15,-48" stroke="rgba(216,228,198,0.66)" stroke-width="1.7" fill="none"/>
-        <path d="M-16,-53 Q-4,-81 9,-53"  stroke="rgba(212,225,195,0.60)" stroke-width="1.5" fill="none"/>
-        <path d="M-8,-46 Q6,-72 18,-44"   stroke="rgba(207,221,191,0.58)" stroke-width="1.4" fill="none"/>
-        <path d="M-17,-56 Q-7,-84 4,-56"  stroke="rgba(212,225,195,0.53)" stroke-width="1.2" fill="none"/>
-        <path d="M0,-44 Q12,-70 23,-42"   stroke="rgba(207,221,191,0.53)" stroke-width="1.2" fill="none"/>
-        <ellipse cx="3"  cy="-62" rx="13" ry="19" fill="rgba(212,225,195,0.42)" transform="rotate(3)"/>
-        <ellipse cx="2"  cy="-57" rx="10" ry="15" fill="rgba(220,232,203,0.48)"/>
-        <path d="M0,50 Q-6,20 -11,-16" stroke="#1e3024" stroke-width="1.8" fill="none"/>
-        <path d="M0,50 Q6,18  9,-18"   stroke="#243826" stroke-width="1.8" fill="none"/>
-      </g>
-
-      <!-- Plume 3 – shorter front -->
-      <g transform="translate(28,820)">
-        <path d="M0,54 Q-3,22 -2,-56" stroke="#283826" stroke-width="2" fill="none"/>
-        <path d="M-11,-40 Q2,-65 13,-40" stroke="rgba(216,228,198,0.63)" stroke-width="1.6" fill="none"/>
-        <path d="M-13,-44 Q-3,-69 8,-44"  stroke="rgba(212,225,195,0.57)" stroke-width="1.4" fill="none"/>
-        <path d="M-7,-38 Q6,-61 16,-37"   stroke="rgba(207,221,191,0.55)" stroke-width="1.3" fill="none"/>
-        <ellipse cx="1"  cy="-52" rx="11" ry="16" fill="rgba(210,223,193,0.40)"/>
-        <ellipse cx="0"  cy="-47" rx="8"  ry="12" fill="rgba(220,232,203,0.45)"/>
-        <path d="M0,54 Q-5,20 -9,-12" stroke="#1e3024" stroke-width="1.5" fill="none"/>
-        <path d="M0,54 Q4,18  7,-15"  stroke="#243826" stroke-width="1.5" fill="none"/>
-      </g>
-
-      <!-- Plume 4 – leaning left -->
-      <g transform="translate(142,830) rotate(-10)">
-        <path d="M0,46 Q-4,14 -6,-60" stroke="#263625" stroke-width="2" fill="none"/>
-        <path d="M-14,-42 Q-2,-70 10,-42" stroke="rgba(214,227,197,0.61)" stroke-width="1.5" fill="none"/>
-        <path d="M-17,-46 Q-6,-75 6,-46"  stroke="rgba(210,223,193,0.56)" stroke-width="1.3" fill="none"/>
-        <path d="M-9,-40 Q4,-65 14,-38"   stroke="rgba(205,219,191,0.53)" stroke-width="1.2" fill="none"/>
-        <ellipse cx="-3" cy="-56" rx="12" ry="17" fill="rgba(210,223,193,0.39)"/>
-        <ellipse cx="-4" cy="-51" rx="9"  ry="13" fill="rgba(218,230,201,0.44)"/>
-        <path d="M0,46 Q-7,18 -12,-14" stroke="#1e3024" stroke-width="1.5" fill="none"/>
-        <path d="M0,46 Q3,14  4,-18"   stroke="#243826" stroke-width="1.5" fill="none"/>
-      </g>
-
-      <!-- Tall grass blades between plumes -->
-      <path d="M172,900 Q164,840 155,775" stroke="#1a2e1e" stroke-width="2"   fill="none"/>
-      <path d="M198,900 Q191,845 188,782" stroke="#1e3222" stroke-width="1.8" fill="none"/>
-      <path d="M150,900 Q143,842 134,772" stroke="#1a2e1e" stroke-width="1.6" fill="none"/>
-      <path d="M224,900 Q218,848 215,788" stroke="#1e3222" stroke-width="1.5" fill="none"/>
-      <path d="M128,900 Q121,845 114,775" stroke="#162a1c" stroke-width="1.4" fill="none"/>
-    </svg>
-  </div>
-
-  <div class="hero-text">
-    <h1>Where Sky Meets Sea</h1>
-    <p>Discover the endless horizon</p>
-  </div>
-  <div class="scroll-hint">Scroll</div>
-
-</section>
-
-<!-- ═══ CONTENT SECTION ═══ -->
-<section class="content-section">
-  <h2>The Endless Horizon</h2>
-  <p>Where turquoise waters kiss ancient cliffsides and the wind carries the scent of salt and pine. A place where time slows and the soul breathes freely.</p>
-  <div class="card-row">
-    <div class="card">
-      <div class="card-icon">&#9875;</div>
-      <h3>Set Sail</h3>
-      <p>Chart a course through pristine waters, guided by the stars and the rhythm of the tide.</p>
+  <!-- ── Nav (always on top) ─────────────────────────────────────── -->
+  <nav class="nav">
+    <div class="nav-logo">Ocean Horizon</div>
+    <div class="nav-links">
+      <a href="#">Explore</a>
+      <a href="#">Gallery</a>
+      <a href="#">Journey</a>
+      <a href="#">Contact</a>
     </div>
-    <div class="card">
-      <div class="card-icon">&#9968;</div>
-      <h3>Clifftop Trails</h3>
-      <p>Wind through ancient forests where wildflowers cling to rocky outcrops above the sea.</p>
-    </div>
-    <div class="card">
-      <div class="card-icon">&#9728;</div>
-      <h3>Open Skies</h3>
-      <p>Watch as golden light dances across the waves, painting the world in endless wonder.</p>
+  </nav>
+
+  <!-- ── Layer 1 : Sky (fixed background) ────────────────────────── -->
+  <div id="sky"></div>
+
+  <!-- ── Layer 2 : Ocean Entity (WebGL canvas, rises on scroll) ──── -->
+  <canvas id="ocean"></canvas>
+
+  <!-- ── Layer 3 : Cliffs foreground (fixed, PNG with transparency)  -->
+  <div id="cliffs"></div>
+
+  <!-- ── Scroll driver  ──────────────────────────────────────────── -->
+  <!--   This block creates the scroll room. The fixed layers react
+         to scrollY while this element flows normally in the document. -->
+  <div class="scroll-driver">
+    <div class="hero-content">
+      <h1>Where Sky<br>Meets Sea</h1>
+      <p>Discover the endless horizon</p>
+      <span class="scroll-hint">
+        Scroll to reveal
+        <span class="scroll-line"></span>
+      </span>
     </div>
   </div>
-  <button class="cta-btn">Begin the Journey</button>
-</section>
 
-<footer>&copy; 2026 Ocean Horizon &nbsp;&bull;&nbsp; Where the sea calls you home</footer>
+  <!-- ── Content sections ────────────────────────────────────────── -->
+  <main class="content">
+    <section class="section-intro">
+      <h2>The Endless Horizon</h2>
+      <p>Where turquoise waters kiss ancient cliffsides and the wind carries
+         the scent of salt and pine. A place where time slows and the soul
+         breathes freely.</p>
+    </section>
 
-<script>
-  // ── Parallax: scroll depth + mouse-move tilt ──────────────────────────
-  //
-  // Each layer with data-speed gets:
-  //   translateY  → driven by scroll (deeper layers move less)
-  //   translate   → driven by mouse position (deeper layers move less)
-  //
-  // Everything is lerped each rAF frame so motion is silky-smooth.
+    <div class="card-row">
+      <div class="card">
+        <div class="card-icon">&#9875;</div>
+        <h3>Set Sail</h3>
+        <p>Chart a course through pristine waters, guided by the stars and
+           the rhythm of the tide.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">&#9968;</div>
+        <h3>Clifftop Trails</h3>
+        <p>Wind through ancient forests where wildflowers cling to rocky
+           outcrops above the sea.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">&#9728;</div>
+        <h3>Open Skies</h3>
+        <p>Watch as golden light dances across the waves, painting the world
+           in endless wonder.</p>
+      </div>
+    </div>
 
-  const layers = [...document.querySelectorAll('[data-speed]')];
+    <button class="cta-btn">Begin the Journey</button>
+  </main>
 
-  // Mouse target (normalised -1 → +1 from centre)
-  let mx = 0, my = 0;
-  // Smoothed mouse position
-  let smx = 0, smy = 0;
+  <footer>
+    &copy; 2026 Ocean Horizon &nbsp;&bull;&nbsp; Where the sea calls you home
+  </footer>
 
-  // Capture raw mouse
-  window.addEventListener('mousemove', e => {
-    mx = (e.clientX / window.innerWidth  - 0.5) * 2;
-    my = (e.clientY / window.innerHeight - 0.5) * 2;
-  }, { passive: true });
-
-  // Mobile: device orientation tilt
-  window.addEventListener('deviceorientation', e => {
-    if (e.gamma == null) return;
-    mx = Math.max(-1, Math.min(1, e.gamma / 25));
-    my = Math.max(-1, Math.min(1, (e.beta  - 30) / 30));
-  }, { passive: true });
-
-  // Depth config per layer — deeper layers get less mouse parallax
-  // data-speed already encodes scroll depth; mouse depth mirrors it.
-  // Mouse amplitude (px) = mouseAmp * (1 - scrollSpeed)
-  const MOUSE_AMP  = 28;   // max px shift at full tilt (foreground)
-  const LERP_MOUSE = 0.06; // smoothing factor (lower = more lag)
-
-  let raf;
-  function tick() {
-    // Smooth mouse
-    smx += (mx - smx) * LERP_MOUSE;
-    smy += (my - smy) * LERP_MOUSE;
-
-    const sy = window.scrollY;
-
-    layers.forEach(el => {
-      const speed = parseFloat(el.dataset.speed);
-      // Scroll: faster speed = more vertical shift (foreground moves most)
-      const scrollY = sy * speed;
-      // Mouse: foreground (high speed) moves more, background less
-      const depth   = speed;          // 0 = static bg, 0.5 = mid, sky
-      const dx = smx * MOUSE_AMP * depth;
-      const dy = smy * MOUSE_AMP * depth * 0.5;
-
-      el.style.transform = `translate(${dx}px, ${scrollY + dy}px)`;
-    });
-
-    raf = requestAnimationFrame(tick);
-  }
-
-  tick();
-
-  // Pause when tab hidden to save resources
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) cancelAnimationFrame(raf);
-    else tick();
-  });
-</script>
+  <script src="script.js"></script>
 </body>
 </html>
