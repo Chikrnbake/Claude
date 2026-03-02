@@ -3,13 +3,16 @@
    ───────────────────────────────────────────────────────────────────
    Responsibilities
      1.  Boot WebGL2 (fallback to WebGL1) on the #ocean <canvas>
-     2.  Compile main render shader (Gerstner + noise + contours)
+     2.  Compile main render shader (Gerstner + noise + calm teal ocean)
      3.  Compile shallow-water sim shader
      4.  Each frame: sim step on ping-pong FBO → main render to canvas
      5.  Inject disturbances from scroll velocity and mouse position
      6.  Map window.scrollY → canvas translateY  ("rising ocean")
      7.  Pass scroll velocity as u_speed so shader reacts to scrolling
      8.  Mouse-move parallax across all [data-speed] layers
+     9.  Scroll-based parallax shift per layer via data-scroll-speed
+    10.  Fog layer drift animation
+    11.  Intersection Observer for content entrance animations
 ═══════════════════════════════════════════════════════════════════ */
 
 'use strict';
@@ -17,10 +20,18 @@
 /* ── 1.  WebGL context  (prefer WebGL2 for float FBO support) ──── */
 
 const canvas = document.getElementById('ocean');
-let gl = canvas.getContext('webgl2');
+let gl = canvas.getContext('webgl2', { alpha: true, premultipliedAlpha: false });
 const isGL2 = !!gl;
-if (!gl) gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+if (!gl) gl = canvas.getContext('webgl', { alpha: true, premultipliedAlpha: false })
+           || canvas.getContext('experimental-webgl', { alpha: true, premultipliedAlpha: false });
 if (!gl) console.warn('WebGL unavailable – ocean will not render.');
+
+/* Alpha blending so the canvas composites over the sky layer */
+if (gl) {
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+  gl.clearColor(0.0, 0.0, 0.0, 0.0);
+}
 
 /*
    Choose texture format for the ping-pong simulation buffers.
@@ -183,13 +194,14 @@ resize();
                   below the viewport  (ocean starts low, then rises).
    RISE_RANGE   – scroll pixels needed for the ocean to fully rise.
 */
-const RISE_OFFSET = 55;   /* % */
-const RISE_RANGE  = () => window.innerHeight * 1.1;
+const RISE_OFFSET = 38;   /* % */
+const RISE_RANGE  = () => window.innerHeight * 0.55;
 
 let scrollY     = window.scrollY;
 let lastScrollY = scrollY;
 let rawSpeed    = 0;   /* px/frame delta                             */
 let smoothSpeed = 0;   /* exponentially smoothed, sent as u_speed   */
+let smoothScrollY = 0; /* lerped scrollY for parallax               */
 
 window.addEventListener('scroll', () => { scrollY = window.scrollY; },
                         { passive: true });
@@ -224,8 +236,8 @@ canvas.addEventListener('mousemove', e => {
 
 /*
    Any element with data-speed="0.xx" shifts on mouse-move.
+   data-scroll-speed="0.xx" adds a scroll-based vertical shift.
    Higher speed = closer to camera = more movement.
-   The #ocean canvas is driven by the GL shader separately.
 */
 const parallaxLayers = [...document.querySelectorAll('[data-speed]')];
 
@@ -247,7 +259,27 @@ window.addEventListener('deviceorientation', e => {
   my = Math.max(-1, Math.min(1, (e.beta - 30) / 30));
 }, { passive: true });
 
-/* ── 12. Render loop ───────────────────────────────────────────── */
+/* ── 12. Fog elements ──────────────────────────────────────────── */
+
+const fogFar  = document.getElementById('fog-far');
+const fogMid  = document.getElementById('fog-mid');
+const fogNear = document.getElementById('fog-near');
+let fogTime   = 0;
+
+/* ── 13. Intersection Observer for entrance animations ─────────── */
+
+const revealEls = document.querySelectorAll('.card, .section-intro, .cta-btn');
+const revealObserver = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.classList.add('visible');
+      revealObserver.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.15 });
+revealEls.forEach(el => revealObserver.observe(el));
+
+/* ── 14. Render loop ───────────────────────────────────────────── */
 
 const startTime = performance.now();
 let rafId;
@@ -263,6 +295,9 @@ function tick() {
   /* Exponential smoothing — speed decays gracefully after stop */
   smoothSpeed += (Math.min(rawSpeed / 12, 1.0) - smoothSpeed) * 0.08;
 
+  /* ── b2) Smooth scroll Y for parallax ── */
+  smoothScrollY += (window.scrollY - smoothScrollY) * 0.07;
+
   /* ── c) Ocean canvas rise ── */
   const ty = Math.max(
     0,
@@ -275,10 +310,52 @@ function tick() {
   smy += (my - smy) * LERP_MX;
 
   parallaxLayers.forEach(el => {
-    const sp = parseFloat(el.dataset.speed);
-    el.style.transform = `translate(${(smx * MOUSE_AMP * sp).toFixed(2)}px,`
-                       + `${(scrollY * sp + smy * MOUSE_AMP * sp * 0.5).toFixed(2)}px)`;
+    const sp          = parseFloat(el.dataset.speed);
+    const scrollSpeed = el.dataset.scrollSpeed
+                        ? parseFloat(el.dataset.scrollSpeed)
+                        : 0;
+    const dx = smx * MOUSE_AMP * sp;
+    const dy = -(smoothScrollY * scrollSpeed)
+               + smy * MOUSE_AMP * sp * 0.5;
+    el.style.transform =
+      `translate(${dx.toFixed(2)}px, ${dy.toFixed(2)}px)`;
   });
+
+  /* ── d2) Cliffs scale shift ── */
+  const cliffsEl = document.getElementById('cliffs');
+  if (cliffsEl) {
+    const scaleShift = 1.0 + smoothScrollY * 0.00012;
+    const yShift = -(smoothScrollY * 0.28).toFixed(2);
+    cliffsEl.style.transform =
+      `translateY(${yShift}px) scale(${scaleShift.toFixed(4)})`;
+    cliffsEl.style.transformOrigin = 'bottom left';
+  }
+
+  /* ── d3) Hero content parallax ── */
+  const heroEl = document.querySelector('.hero-content');
+  if (heroEl) {
+    heroEl.style.transform =
+      `translateY(${-(smoothScrollY * 0.14).toFixed(2)}px)`;
+  }
+
+  /* ── d4) Fog animation ── */
+  fogTime += 0.0008;
+  const farX  = Math.sin(fogTime * 0.7)       * 18;
+  const farY  = Math.sin(fogTime * 0.4)       * 6;
+  const midX  = Math.sin(fogTime * 1.1 + 1.2) * 28;
+  const midY  = Math.sin(fogTime * 0.6 + 0.8) * 10;
+  const nearX = Math.sin(fogTime * 1.6 + 2.4) * 38;
+  const nearY = Math.sin(fogTime * 0.9 + 1.6) * 14;
+  const fogScrollLift = smoothScrollY * 0.06;
+  if (fogFar)  fogFar.style.transform =
+    `translate(${farX.toFixed(2)}px, ${(-farY - fogScrollLift).toFixed(2)}px)`;
+  if (fogMid)  fogMid.style.transform =
+    `translate(${midX.toFixed(2)}px, ${(-midY - fogScrollLift * 1.3).toFixed(2)}px)`;
+  if (fogNear) fogNear.style.transform =
+    `translate(${nearX.toFixed(2)}px, ${(-nearY - fogScrollLift * 1.7).toFixed(2)}px)`;
+  const fogBreath = Math.sin(fogTime * 0.5) * 0.18 + 0.82;
+  if (fogMid)  fogMid.style.opacity  = (fogBreath * 0.90).toFixed(3);
+  if (fogNear) fogNear.style.opacity = (fogBreath * 0.75).toFixed(3);
 
   if (!gl) { rafId = requestAnimationFrame(tick); return; }
 
@@ -327,6 +404,7 @@ function tick() {
   gl.useProgram(program);
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);           /* render to canvas   */
   gl.viewport(0, 0, canvas.width, canvas.height);
+  gl.clear(gl.COLOR_BUFFER_BIT);                      /* clear to transparent */
 
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, simTexture);
