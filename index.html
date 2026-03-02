@@ -21,9 +21,10 @@
   <script id="frag-shader" type="x-shader/x-fragment">
     precision highp float;
 
-    uniform float u_time;       /* seconds since page load               */
-    uniform float u_speed;      /* scroll velocity, clamped 0–1          */
-    uniform vec2  u_resolution; /* canvas pixel dimensions               */
+    uniform float      u_time;       /* seconds since page load            */
+    uniform float      u_speed;      /* scroll velocity, clamped 0–1       */
+    uniform vec2       u_resolution; /* canvas pixel dimensions            */
+    uniform sampler2D  u_simTex;     /* ping-pong shallow water texture    */
 
     /* ── Simplex 2-D Noise (Gustavson / McEwan) ─────────────────── */
     vec3 mod289v3(vec3 x){ return x - floor(x*(1./289.))*289.; }
@@ -55,6 +56,21 @@
       g.x  = a0.x *x0.x   + h.x *x0.y;
       g.yz = a0.yz*x12.xz + h.yz*x12.yw;
       return 130. * dot(m, g);
+    }
+
+    /* ── Gerstner wave  (dispersion: c = sqrt(9.81/k)) ─────────── */
+    /*    dir       – propagation direction (need not be normalised) */
+    /*    wavelength – metres (maps to spatial frequency k)          */
+    /*    amp       – vertical amplitude; scaled by u_speed          */
+    /*    steep     – exponent steepness 0→1; sharpens crests        */
+    float gerstnerWave(vec2 dir, float wavelength, float amp,
+                       float steep, vec2 pos, float time) {
+      float k     = 6.28318 / wavelength;
+      float c     = sqrt(9.81 / k);
+      float phase = dot(normalize(dir), pos) * k - c * time;
+      float w01   = cos(phase) * 0.5 + 0.5;             /* remap → [0,1] */
+      float crest = pow(w01, 1.0 + steep * 2.0);        /* sharpen crests */
+      return (crest * 2.0 - 1.0) * amp;                 /* → [-amp, +amp] */
     }
 
     /* ── Main ────────────────────────────────────────────────────── */
@@ -124,8 +140,25 @@
       ripple += snoise(warpedP * rippleFreq       + u_time * 0.18 + vec2(2.4, 6.8)) * 0.35;
       ripple += snoise(warpedP * rippleFreq * 1.7 + u_time * 0.26)                  * 0.18;
 
-      /* Blend: swell dominates, ripple adds surface detail        */
-      float n = (swell + ripple * 0.40) * 0.5 + 0.5;
+      /* ═══════════════════════════════════════════════════════════
+         GERSTNER SWELL + SHALLOW-WATER SIMULATION BLEND
+         Three analytic Gerstner waves supply the large swell shape.
+         The ping-pong simulation texture supplies reactive surface
+         detail.  Both are blended into totalWave which replaces the
+         pure-noise swell in all downstream colour calculations.
+      ═══════════════════════════════════════════════════════════ */
+      float ampScale = 1.0 + u_speed * 0.8;
+      float gerstnerSum = 0.0;
+      gerstnerSum += gerstnerWave(vec2(0.85, 0.52), 1.80, 0.045 * ampScale, 0.55, warpedP, t);
+      gerstnerSum += gerstnerWave(vec2(0.32, 0.94), 0.95, 0.028 * ampScale, 0.40, warpedP, t);
+      gerstnerSum += gerstnerWave(vec2(0.61, 0.79), 2.60, 0.018 * ampScale, 0.30, warpedP, t);
+
+      /* Sim texture: R stores height [0,1] with 0.5 as equilibrium */
+      float simNormal = texture2D(u_simTex, uv).r * 2.0 - 1.0;
+      float totalWave = gerstnerSum * 0.65 + simNormal * 0.35;
+
+      /* Blend: totalWave drives main shape, ripple adds surface detail */
+      float n = (totalWave + ripple * 0.40) * 0.5 + 0.5;
 
       /* ═══════════════════════════════════════════════════════════
          TOPOGRAPHIC / ISOHYPSE CONTOUR LINES
@@ -147,7 +180,7 @@
          at different rates create an organic shimmer.
       ═══════════════════════════════════════════════════════════ */
       float pulse     = sin(u_time * 0.7 + n * 6.2831) * 0.14 + 1.0;
-      float crestPulse = sin(u_time * 1.1 + swell * 4.0) * 0.12 + 1.0;
+      float crestPulse = sin(u_time * 1.1 + totalWave * 4.0) * 0.12 + 1.0;
 
       /* ═══════════════════════════════════════════════════════════
          IRIDESCENCE / CHROMATIC ABERRATION
@@ -208,6 +241,50 @@
       color *= topFade;
 
       gl_FragColor = vec4(color, 1.0);
+    }
+  </script>
+  <!-- ═══════════════════════════════════════════════════════════════
+       SHALLOW WATER SIMULATION SHADER
+       Runs on the ping-pong FBO each frame before the main render.
+       R = height [0,1]  (0.5 = equilibrium)
+       G = velocity encoded as v*0.5+0.5  →  [0,1]
+  ═══════════════════════════════════════════════════════════════ -->
+  <script id="sim-shader" type="x-shader/x-fragment">
+    precision highp float;
+
+    uniform sampler2D u_simTex;         /* previous state                  */
+    uniform vec2      u_simResolution;  /* canvas pixel dimensions          */
+    uniform vec2      u_disturbance;    /* UV of impulse; (-1,-1) = none   */
+    uniform float     u_disturbStrength;/* height impulse magnitude         */
+
+    void main() {
+      vec2 uv    = gl_FragCoord.xy / u_simResolution;
+      vec2 texel = 1.0 / u_simResolution;
+
+      /* Read current pixel — R: height, G: encoded velocity         */
+      vec4  cur = texture2D(u_simTex, uv);
+      float h   = cur.r;
+      float v   = cur.g * 2.0 - 1.0;        /* decode [0,1] → [-1,1] */
+
+      /* 4-neighbour heights                                          */
+      float hN = texture2D(u_simTex, uv + vec2(0.0,     texel.y)).r;
+      float hS = texture2D(u_simTex, uv - vec2(0.0,     texel.y)).r;
+      float hE = texture2D(u_simTex, uv + vec2(texel.x, 0.0    )).r;
+      float hW = texture2D(u_simTex, uv - vec2(texel.x, 0.0    )).r;
+
+      /* Shallow water propagation step                               */
+      float newV = v + (((hN + hS + hE + hW) * 0.25) - h) * 2.0;
+      newV      *= 0.985;                    /* damping               */
+      float newH = clamp(h + newV, 0.0, 1.0);
+
+      /* Disturbance injection  (x < 0  →  disabled)                 */
+      if (u_disturbance.x >= 0.0) {
+        if (length(uv - u_disturbance) < 0.012)
+          newH = clamp(newH + u_disturbStrength, 0.0, 1.0);
+      }
+
+      /* Encode: velocity [-1,1] → [0,1] for texture storage         */
+      gl_FragColor = vec4(newH, clamp(newV * 0.5 + 0.5, 0.0, 1.0), 0.0, 1.0);
     }
   </script>
 </head>
