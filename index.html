@@ -61,56 +61,52 @@
     /* ── Gerstner wave  (dispersion: c = sqrt(9.81/k)) ─────────── */
     float gerstnerWave(vec2 dir, float wavelength, float amp,
                        float steep, vec2 pos, float time) {
-      float k     = 6.28318 / wavelength;
-      float c     = sqrt(9.81 / k);
-      float phase = dot(normalize(dir), pos) * k - c * time;
-      float w01   = cos(phase) * 0.5 + 0.5;
-      float crest = pow(w01, 1.0 + steep * 2.0);
+      float k      = 6.28318 / wavelength;
+      float c      = sqrt(9.81 / k);
+      float wPhase = dot(normalize(dir), pos) * k - c * time;
+      float w01    = cos(wPhase) * 0.5 + 0.5;
+      float crest  = pow(w01, 1.0 + steep * 2.0);
       return (crest * 2.0 - 1.0) * amp;
     }
 
-    /* ── waveHeight helper for finite-difference normal computation */
+    /* ── waveHeight: finite-difference normal helper ─────────────── */
+    /*    Ripple+Gerstner+swell stand-in (can't sample sim at offsets) */
     float waveHeight(vec2 pos, float t, float spd) {
-      float swellFreq = 3.2 + spd * 0.7;
-      float sw = 0.0;
-      sw += snoise(pos * swellFreq       + t * 0.15)                     * 0.38;
-      sw += snoise(pos * swellFreq * 2.0 + t * 0.12 + vec2(5.2, 1.3))   * 0.20;
-      sw += snoise(pos * swellFreq * 4.0 + t * 0.08 + vec2(9.7, 3.1))   * 0.10;
-      float ripFreq = 14.0 + spd * 5.0;
-      float rp = 0.0;
-      rp += snoise(pos * ripFreq       + u_time * 0.18 + vec2(2.4, 6.8)) * 0.40;
-      rp += snoise(pos * ripFreq * 1.7 + u_time * 0.26)                  * 0.22;
+      float swFreq = 3.2 + spd * 0.7;
+      float sw  = snoise(pos * swFreq       + t * 0.15)                   * 0.38
+                + snoise(pos * swFreq * 2.0 + t * 0.12 + vec2(5.2, 1.3)) * 0.20
+                + snoise(pos * swFreq * 4.0 + t * 0.08 + vec2(9.7, 3.1)) * 0.10;
+      float rpFreq = 14.0 + spd * 5.0;
+      float rp  = snoise(pos * rpFreq       + u_time * 0.18 + vec2(2.4, 6.8)) * 0.40
+                + snoise(pos * rpFreq * 1.7 + u_time * 0.26)                  * 0.22;
       float ampSc = 1.0 + spd * 0.8;
-      float gs = 0.0;
-      gs += gerstnerWave(vec2(0.85, 0.52), 2.35, 0.027 * ampSc, 0.55, pos, t);
-      gs += gerstnerWave(vec2(0.32, 0.94), 1.24, 0.017 * ampSc, 0.40, pos, t);
-      gs += gerstnerWave(vec2(0.61, 0.79), 3.38, 0.011 * ampSc, 0.30, pos, t);
+      float gs  = gerstnerWave(vec2(0.85, 0.52), 2.35, 0.027 * ampSc, 0.55, pos, t)
+                + gerstnerWave(vec2(0.32, 0.94), 1.24, 0.017 * ampSc, 0.40, pos, t)
+                + gerstnerWave(vec2(0.61, 0.79), 3.38, 0.011 * ampSc, 0.30, pos, t);
       return (gs * 0.65 + sw * 0.35 + rp * 0.40) * 0.5 + 0.5;
     }
 
     /* ── Main ────────────────────────────────────────────────────── */
     void main() {
-      vec2 uv = gl_FragCoord.xy / u_resolution.xy;
+      vec2  uv     = gl_FragCoord.xy / u_resolution.xy;
       float aspect = u_resolution.x / u_resolution.y;
-      vec2 p = vec2(uv.x * aspect, uv.y);
+      vec2  p      = vec2(uv.x * aspect, uv.y);
 
-      /* ── Wave surface edge — animated waterline with foam ────── */
-      float wx = uv.x * u_resolution.x / u_resolution.y;
+      /* ── Wave surface edge — animated waterline + foam ─────────── */
+      /* p.x == uv.x * aspect  (same as wx = uv.x * res.x / res.y)   */
       float surfaceY =
-        sin(wx * 3.8  + u_time * 0.55) * 0.028 +
-        sin(wx * 7.1  - u_time * 0.80) * 0.016 +
-        sin(wx * 12.4 + u_time * 1.10) * 0.009 +
-        sin(wx * 1.9  - u_time * 0.30) * 0.038 +
-        snoise(vec2(wx * 0.9, u_time * 0.18)) * 0.022;
+        sin(p.x * 3.8  + u_time * 0.55) * 0.028 +
+        sin(p.x * 7.1  - u_time * 0.80) * 0.016 +
+        sin(p.x * 12.4 + u_time * 1.10) * 0.009 +
+        sin(p.x * 1.9  - u_time * 0.30) * 0.038 +
+        snoise(vec2(p.x * 0.9, u_time * 0.18)) * 0.022;
       float waterHorizon    = 0.94 + surfaceY;
       float distFromSurface = uv.y - waterHorizon;
       float surfaceMask     = smoothstep(-0.008, 0.018, distFromSurface);
-      float foamBand = 1.0 - smoothstep(0.0, 0.014,
-                        abs(distFromSurface + 0.004));
-      foamBand *= (0.5 + snoise(vec2(wx * 6.0, u_time * 0.7)) * 0.5);
-      float rollFoam = 1.0 - smoothstep(0.0, 0.022,
-                        abs(distFromSurface + 0.018));
-      rollFoam *= (0.3 + snoise(vec2(wx * 4.5 + 1.3, u_time * 0.55)) * 0.4);
+      float foamBand = (1.0 - smoothstep(0.0, 0.014, abs(distFromSurface + 0.004)))
+                     * (0.5 + snoise(vec2(p.x * 6.0, u_time * 0.7)) * 0.5);
+      float rollFoam = (1.0 - smoothstep(0.0, 0.022, abs(distFromSurface + 0.018)))
+                     * (0.3 + snoise(vec2(p.x * 4.5 + 1.3, u_time * 0.55)) * 0.4);
 
       /* ── Scroll-driven energy ─────────────────────────────────── */
       float energy = 0.08 + u_speed * 0.22;
@@ -118,28 +114,29 @@
 
       /* ═══════════════════════════════════════════════════════════
          FLOW MAP  —  two-phase cycling prevents texture stretching.
+         The flow field is built from noise so the entity swirls
+         organically rather than translating linearly.
       ═══════════════════════════════════════════════════════════ */
-      float cycle = mod(u_time * 0.04, 1.0);
-      float phase = abs(2.0 * cycle - 1.0);
+      float cycle     = mod(u_time * 0.04, 1.0);
+      float flowPhase = abs(2.0 * cycle - 1.0);
 
-      vec2 flow1 = vec2(
-        snoise(p * 0.65 + t * 0.11),
-        snoise(p * 0.65 + vec2(7.3, 2.1) + t * 0.09)
-      );
-      vec2 flow2 = vec2(
-        snoise(p * 0.65 + vec2(3.7, 11.2) + t * 0.11),
-        snoise(p * 0.65 + vec2(13.1, 5.9) + t * 0.09)
-      );
-      vec2 flow = mix(flow1, flow2, phase);
+      vec2 flow1 = vec2(snoise(p * 0.65 + t * 0.11),
+                        snoise(p * 0.65 + vec2(7.3, 2.1)  + t * 0.09));
+      vec2 flow2 = vec2(snoise(p * 0.65 + vec2(3.7, 11.2) + t * 0.11),
+                        snoise(p * 0.65 + vec2(13.1, 5.9) + t * 0.09));
+      vec2 flow = mix(flow1, flow2, flowPhase);
 
-      float cliffDist  = length(uv - vec2(0.12, 0.18));
-      float swirlMask  = smoothstep(0.60, 0.06, cliffDist);
+      /* Swirl harder near the bottom-left (cliff base)            */
+      float cliffDist = length(uv - vec2(0.12, 0.18));
+      float swirlMask = smoothstep(0.60, 0.06, cliffDist);
       float flowStr    = 0.11 + swirlMask * 0.16 + u_speed * 0.07;
 
       vec2 advP = p + flow * flowStr;
 
       /* ═══════════════════════════════════════════════════════════
-         DISPLACEMENT MAP
+         DISPLACEMENT MAP  —  warps contours as if viewed through
+         moving water.  A slow, large-scale noise field bends the
+         sampling coordinates so lines undulate and flex.
       ═══════════════════════════════════════════════════════════ */
       float displaceAmt = 0.09 + u_speed * 0.05;
       vec2 displace = vec2(
@@ -149,62 +146,47 @@
       vec2 warpedP = advP + displace * displaceAmt;
 
       /* ═══════════════════════════════════════════════════════════
-         SHORE PROXIMITY
+         SHORE PROXIMITY  —  0 at cliff (left), 0 past 45% width.
       ═══════════════════════════════════════════════════════════ */
-      float shoreDist = uv.x;
-      float shoreProx = smoothstep(0.45, 0.0, shoreDist);
+      float shoreProx = smoothstep(0.45, 0.0, uv.x);
 
       /* ═══════════════════════════════════════════════════════════
-         DUAL-SPEED LAYERED NOISE
+         SURFACE RIPPLE  (deep swell is provided by Gerstner+sim)
       ═══════════════════════════════════════════════════════════ */
-      float swellFreq = 3.2 + u_speed * 0.7;
-      float swell = 0.0;
-      swell += snoise(warpedP * swellFreq       + t * 0.15)                     * 0.38;
-      swell += snoise(warpedP * swellFreq * 2.0 + t * 0.12 + vec2(5.2, 1.3))   * 0.20;
-      swell += snoise(warpedP * swellFreq * 4.0 + t * 0.08 + vec2(9.7, 3.1))   * 0.10;
-
       float rippleFreq = 14.0 + u_speed * 5.0;
-      float ripple = 0.0;
-      ripple += snoise(warpedP * rippleFreq       + u_time * 0.18 + vec2(2.4, 6.8)) * 0.40;
-      ripple += snoise(warpedP * rippleFreq * 1.7 + u_time * 0.26)                  * 0.22;
+      float ripple = snoise(warpedP * rippleFreq       + u_time * 0.18 + vec2(2.4, 6.8)) * 0.40
+                   + snoise(warpedP * rippleFreq * 1.7 + u_time * 0.26)                  * 0.22;
       ripple *= (1.0 + shoreProx * 1.4);
 
       /* ═══════════════════════════════════════════════════════════
          GERSTNER SWELL + SHALLOW-WATER SIMULATION BLEND
       ═══════════════════════════════════════════════════════════ */
-      float ampScale = 1.0 + u_speed * 0.8;
-      float gerstnerSum = 0.0;
-      gerstnerSum += gerstnerWave(vec2(0.85, 0.52), 2.35, 0.027 * ampScale, 0.55, warpedP, t);
-      gerstnerSum += gerstnerWave(vec2(0.32, 0.94), 1.24, 0.017 * ampScale, 0.40, warpedP, t);
-      gerstnerSum += gerstnerWave(vec2(0.61, 0.79), 3.38, 0.011 * ampScale, 0.30, warpedP, t);
+      float ampScale    = 1.0 + u_speed * 0.8;
+      float gerstnerSum = gerstnerWave(vec2(0.85, 0.52), 2.35, 0.027 * ampScale, 0.55, warpedP, t)
+                        + gerstnerWave(vec2(0.32, 0.94), 1.24, 0.017 * ampScale, 0.40, warpedP, t)
+                        + gerstnerWave(vec2(0.61, 0.79), 3.38, 0.011 * ampScale, 0.30, warpedP, t);
 
       float simNormal = texture2D(u_simTex, uv).r * 2.0 - 1.0;
       float totalWave = gerstnerSum * 0.65 + simNormal * 0.35;
-      float n = (totalWave + ripple * 0.40) * 0.5 + 0.5;
+      float n         = (totalWave + ripple * 0.40) * 0.5 + 0.5;
 
       /* ═══════════════════════════════════════════════════════════
-         SURFACE NORMALS via FINITE DIFFERENCES
+         SURFACE NORMAL  via FINITE DIFFERENCES
       ═══════════════════════════════════════════════════════════ */
-      float epsilon = 0.0025;
-      float hL = waveHeight(warpedP - vec2(epsilon, 0.0   ), t, u_speed);
-      float hR = waveHeight(warpedP + vec2(epsilon, 0.0   ), t, u_speed);
-      float hD = waveHeight(warpedP - vec2(0.0,    epsilon), t, u_speed);
-      float hU = waveHeight(warpedP + vec2(0.0,    epsilon), t, u_speed);
-      vec3 normal = normalize(vec3(hL - hR, hD - hU, 0.08));
+      float eps = 0.0025;
+      vec3 normal = normalize(vec3(
+        waveHeight(warpedP - vec2(eps, 0.0), t, u_speed) -
+        waveHeight(warpedP + vec2(eps, 0.0), t, u_speed),
+        waveHeight(warpedP - vec2(0.0, eps), t, u_speed) -
+        waveHeight(warpedP + vec2(0.0, eps), t, u_speed),
+        0.08
+      ));
       normal.xy *= (1.0 + shoreProx * 0.8);
       normal     = normalize(normal);
 
-      /* ═══════════════════════════════════════════════════════════
-         LUMINOSITY PULSING
-      ═══════════════════════════════════════════════════════════ */
-      float pulse      = sin(u_time * 0.7 + n * 6.2831) * 0.14 + 1.0;
+      /* ─── crestPulse for shimmer/foam; caustic sparkles ──────── */
       float crestPulse = sin(u_time * 1.1 + totalWave * 4.0) * 0.12 + 1.0;
-
-      /* ═══════════════════════════════════════════════════════════
-         CAUSTICS
-      ═══════════════════════════════════════════════════════════ */
-      float caustic = snoise(warpedP * 22.0 + t * 0.55);
-      caustic = pow(max(caustic, 0.0), 5.0) * 0.70;
+      float caustic    = pow(max(snoise(warpedP * 22.0 + t * 0.55), 0.0), 5.0) * 0.70;
 
       /* ═══════════════════════════════════════════════════════════
          COLOUR COMPOSITION  —  calm illustrated teal ocean
@@ -214,30 +196,20 @@
       vec3 shallowOcean = vec3(0.10, 0.62, 0.62);
       vec3 foamWhite    = vec3(0.78, 0.95, 0.96);
 
-      float depth   = smoothstep(0.30, 0.65, n);
-      float shallow = smoothstep(0.60, 0.85, n);
-      vec3 color    = mix(deepOcean, midOcean, depth);
-      color         = mix(color, shallowOcean, shallow);
+      vec3 color = mix(deepOcean, midOcean,     smoothstep(0.30, 0.65, n));
+      color      = mix(color,     shallowOcean, smoothstep(0.60, 0.85, n));
 
       /* Shimmer */
-      float shimmer = snoise(warpedP * 18.0 + u_time * 0.25);
-      shimmer = pow(max(shimmer, 0.0), 4.0) * 0.55;
-      color += foamWhite * shimmer * crestPulse;
-
+      color += foamWhite * pow(max(snoise(warpedP * 18.0 + u_time * 0.25), 0.0), 4.0)
+                         * 0.55 * crestPulse;
       /* Soft horizontal wave bands */
-      float bands = sin(warpedP.y * 22.0 + u_time * 0.3) * 0.5 + 0.5;
-      bands = smoothstep(0.35, 0.65, bands) * 0.12;
-      color += shallowOcean * bands;
-
+      color += shallowOcean * smoothstep(0.35, 0.65,
+               sin(warpedP.y * 22.0 + u_time * 0.3) * 0.5 + 0.5) * 0.12;
       /* Crest foam */
-      float crestMask = smoothstep(0.74, 0.92, n);
-      color = mix(color, foamWhite, crestMask * 0.50 * crestPulse);
-
-      /* Horizon haze — water lightens toward the right */
-      float horizonHaze = smoothstep(0.0, 1.0, uv.x);
-      color = mix(color, shallowOcean * 1.2, horizonHaze * 0.25);
-
-      /* Caustics (reduced) */
+      color = mix(color, foamWhite, smoothstep(0.74, 0.92, n) * 0.50 * crestPulse);
+      /* Horizon haze */
+      color = mix(color, shallowOcean * 1.2, smoothstep(0.0, 1.0, uv.x) * 0.25);
+      /* Caustics */
       color += foamWhite * caustic * 0.30;
 
       /* Vignette */
@@ -250,36 +222,37 @@
       color *= topFade;
 
       /* ═══════════════════════════════════════════════════════════
-         3-D LIGHTING  —  diffuse + specular + Fresnel
+         3-D LIGHTING
+         lightDir = normalize(0.6,0.8,1.0) ≈ (0.4243,0.5657,0.7071)
+         halfVec  = normalize(lightDir+(0,0,1)) ≈ (0.2683,0.3578,0.8944)
+         dot(normal, viewDir=(0,0,1)) == normal.z
       ═══════════════════════════════════════════════════════════ */
-      vec3  lightDir   = normalize(vec3(0.6, 0.8, 1.0));
-      float diffuse    = max(dot(normal, lightDir), 0.0);
-      vec3  viewDir    = vec3(0.0, 0.0, 1.0);
-      vec3  halfVec    = normalize(lightDir + viewDir);
-      float spec       = pow(max(dot(normal, halfVec), 0.0), 48.0);
-      float fresnel    = pow(1.0 - max(dot(normal, viewDir), 0.0), 3.0);
-      vec3  skyReflect = vec3(0.10, 0.55, 0.60);
+      vec3  lightDir = vec3(0.4243, 0.5657, 0.7071);
+      vec3  halfVec  = vec3(0.2683, 0.3578, 0.8944);
+      float diffuse  = max(dot(normal, lightDir), 0.0);
+      float spec     = pow(max(dot(normal, halfVec), 0.0), 48.0);
+      float fresnel  = pow(1.0 - max(normal.z, 0.0), 3.0);
+
       color *= (0.55 + diffuse * 0.55);
-      color += skyReflect * fresnel * 0.45;
-      color += vec3(0.85, 0.97, 1.00) * spec * 0.90;
-      float troughShadow = smoothstep(0.55, 0.30, n);
-      color *= (1.0 - troughShadow * 0.35);
+      color += vec3(0.10, 0.55, 0.60) * fresnel * 0.45;
+      color += vec3(0.85, 0.97, 1.00) * spec    * 0.90;
+      color *= (1.0 - smoothstep(0.55, 0.30, n) * 0.35);
 
       /* ═══════════════════════════════════════════════════════════
-         CLIFF BASE INTERACTION  —  foam and shadow at the shore
+         CLIFF BASE  —  foam and shadow
       ═══════════════════════════════════════════════════════════ */
-      float shoreFoam = shoreProx * snoise(warpedP * 8.0 + u_time * 0.6);
-      shoreFoam       = smoothstep(0.3, 0.8, shoreFoam);
+      float shoreFoam = smoothstep(0.3, 0.8,
+                          shoreProx * snoise(warpedP * 8.0 + u_time * 0.6));
       color = mix(color, foamWhite, shoreFoam * 0.55);
       color *= (1.0 - shoreProx * 0.22);
 
       /* ═══════════════════════════════════════════════════════════
          WAVE SURFACE EDGE  —  foam band, roll foam, depth fade
       ═══════════════════════════════════════════════════════════ */
-      color = mix(color, foamWhite, foamBand * 0.80);
+      color = mix(color, foamWhite,       foamBand * 0.80);
       color = mix(color, foamWhite * 0.5, rollFoam * 0.45);
-      float depthFade = smoothstep(0.0, 0.25, distFromSurface);
-      color = mix(shallowOcean * 0.6, color, depthFade);
+      color = mix(shallowOcean * 0.6, color,
+                  smoothstep(0.0, 0.25, distFromSurface));
 
       float alpha = surfaceMask * topFade * clamp(vign, 0.0, 1.0);
       gl_FragColor = vec4(color, alpha);
@@ -352,7 +325,7 @@
   <!-- ── Layer 3 : Cliffs foreground (fixed, PNG with transparency)  -->
   <div id="cliffs" data-speed="0.07" data-scroll-speed="0.28"></div>
 
-  <!-- ── Fog layers (z-index 4, animated drifting mist) ─────────── -->
+  <!-- ── Fog layers (z-index 4, animated mist) ───────────────────── -->
   <div id="fog-far"></div>
   <div id="fog-mid"></div>
   <div id="fog-near"></div>

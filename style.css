@@ -20,7 +20,6 @@ body {
   inset: 0;
   z-index: 1;
   background: url('sky-background.png') center / cover no-repeat;
-  /* Fallback gradient if PNG is missing */
   background-color: #080e28;
   will-change: transform;
 }
@@ -275,7 +274,7 @@ footer {
 .card:nth-child(3) { transition-delay: 0.24s; }
 
 /* ═══════════════════════════════════════════════════════════════════
-   Fog layers  (z-index 4, sit between cliffs and scroll-driver)
+   Fog layers  (z-index 4, animated drifting mist)
 ═══════════════════════════════════════════════════════════════════ */
 #fog-far {
   position: fixed;
