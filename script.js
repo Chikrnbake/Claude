@@ -194,8 +194,8 @@ resize();
                   below the viewport  (ocean starts low, then rises).
    RISE_RANGE   – scroll pixels needed for the ocean to fully rise.
 */
-const RISE_OFFSET = 38;   /* % */
-const RISE_RANGE  = () => window.innerHeight * 0.55;
+const RISE_OFFSET = 55;   /* % */
+const RISE_RANGE  = () => window.innerHeight * 0.60;
 
 let scrollY     = window.scrollY;
 let lastScrollY = scrollY;
@@ -315,7 +315,7 @@ function tick() {
 
   /* ── c) Ocean canvas rise ── */
   const ty = Math.max(
-    0,
+    -20,    /* never rises more than 20% above its natural position */
     RISE_OFFSET * (1 - Math.min(scrollY, RISE_RANGE()) / RISE_RANGE())
   );
   canvas.style.transform = `translateY(${ty.toFixed(3)}%)`;
