@@ -71,18 +71,18 @@
 
     /* ── waveHeight: finite-difference normal helper ─────────────── */
     /*    Ripple+Gerstner+swell stand-in (can't sample sim at offsets) */
-    float waveHeight(vec2 pos, float t, float spd) {
+    float waveHeight(vec2 pos, float t, float spd, float freqScale) {
       float swFreq = 3.2 + spd * 0.7;
       float sw  = snoise(pos * swFreq       + t * 0.15)                   * 0.38
                 + snoise(pos * swFreq * 2.0 + t * 0.12 + vec2(5.2, 1.3)) * 0.20
                 + snoise(pos * swFreq * 4.0 + t * 0.08 + vec2(9.7, 3.1)) * 0.10;
-      float rpFreq = 14.0 + spd * 5.0;
+      float rpFreq = (14.0 + spd * 5.0) * freqScale;
       float rp  = snoise(pos * rpFreq       + u_time * 0.18 + vec2(2.4, 6.8)) * 0.40
                 + snoise(pos * rpFreq * 1.7 + u_time * 0.26)                  * 0.22;
       float ampSc = 1.0 + spd * 0.8;
-      float gs  = gerstnerWave(vec2(0.85, 0.52), 2.35, 0.027 * ampSc, 0.55, pos, t)
-                + gerstnerWave(vec2(0.32, 0.94), 1.24, 0.017 * ampSc, 0.40, pos, t)
-                + gerstnerWave(vec2(0.61, 0.79), 3.38, 0.011 * ampSc, 0.30, pos, t);
+      float gs  = gerstnerWave(vec2(-0.82, -0.42), 2.35, 0.027 * ampSc, 0.55, pos, t)
+                + gerstnerWave(vec2(-0.65, -0.72), 1.24, 0.017 * ampSc, 0.40, pos, t)
+                + gerstnerWave(vec2(-0.90, -0.18), 3.38, 0.011 * ampSc, 0.30, pos, t);
       return (gs * 0.65 + sw * 0.35 + rp * 0.40) * 0.5 + 0.5;
     }
 
@@ -90,25 +90,21 @@
     void main() {
       vec2  uv     = gl_FragCoord.xy / u_resolution.xy;
       float aspect = u_resolution.x / u_resolution.y;
-      vec2  p      = vec2(uv.x * aspect, uv.y);
 
       /* ── Perspective projection ────────────────────────────────────
-         Simulate a camera elevated above the water looking down at
-         ~35-40°, angled slightly right toward the open ocean.
-         Vanishing point sits at upper-right of the water canvas,
-         matching where the distant cliffs meet the horizon.
+         Vanishing point (0.78, 0.08) upper-right; perspDepth 2.8.
+         0.35714 = 1.0/2.8 pre-folded.  uvYPow is shared with
+         vertDepth below, saving a second pow() call on uv.y.
       ─────────────────────────────────────────────────────────────── */
-      vec2  vanishingPoint = vec2(0.78, 0.08);
-      float perspDepth     = 2.8;
-      float horizonDist    = max(uv.y, 0.01);
       float perspScale     = mix(0.12, 1.0,
-                                 pow(horizonDist, 1.0 / perspDepth));
-      float perspX         = vanishingPoint.x
-                           + (uv.x - vanishingPoint.x) / perspScale;
+                                 pow(max(uv.y, 0.01), 0.35714));
+      float perspX         = 0.78 + (uv.x - 0.78) / perspScale;
       vec2  perspUV        = vec2(perspX * aspect, uv.y);
 
-      /* Frequency scale: horizon compressed, foreground spread out  */
-      float perspFreqScale = mix(3.5, 1.0, pow(uv.y, 0.7));
+      /* uvYPow shared by perspFreqScale (horizon/foreground freq)
+         and vertDepth (colour zone compression) — one pow() call   */
+      float uvYPow         = pow(uv.y, 0.67);
+      float perspFreqScale = mix(3.5, 1.0, uvYPow);
 
       /* ── Wave surface edge — animated waterline + foam ─────────── */
       float surfaceY =
@@ -118,8 +114,7 @@
         sin(perspUV.x * 1.4  - u_time * 0.25) * 0.048 +
         snoise(vec2(perspUV.x * 0.7, u_time * 0.15)) * 0.028;
       /* Horizon tilts upward toward the right (vanishing point side) */
-      float horizonTilt     = uv.x * 0.045;
-      float waterHorizon    = 0.92 + surfaceY - horizonTilt;
+      float waterHorizon    = 0.92 + surfaceY - uv.x * 0.045;
       float distFromSurface = uv.y - waterHorizon;
       float surfaceMask     = smoothstep(-0.010, 0.022, distFromSurface);
       float foamBand = (1.0 - smoothstep(0.0, 0.018, abs(distFromSurface + 0.005)))
@@ -183,7 +178,7 @@
          matching coastline running from lower-left to upper-right.
       ═══════════════════════════════════════════════════════════ */
       /* Drift: slight rightward-to-left translation of swell field */
-      vec2  driftP    = warpedP + vec2(-0.08, -0.04) * u_time * 0.012;
+      vec2  driftP    = warpedP + vec2(-0.00096, -0.00048) * u_time;
       float ampScale  = 1.0 + u_speed * 0.8;
       float gerstnerSum = gerstnerWave(vec2(-0.82, -0.42), 2.35, 0.027 * ampScale, 0.55, driftP, t)
                         + gerstnerWave(vec2(-0.65, -0.72), 1.24, 0.017 * ampScale, 0.40, driftP, t)
@@ -198,10 +193,10 @@
       ═══════════════════════════════════════════════════════════ */
       float eps = 0.0025;
       vec3 normal = normalize(vec3(
-        waveHeight(driftP - vec2(eps, 0.0), t, u_speed) -
-        waveHeight(driftP + vec2(eps, 0.0), t, u_speed),
-        waveHeight(driftP - vec2(0.0, eps), t, u_speed) -
-        waveHeight(driftP + vec2(0.0, eps), t, u_speed),
+        waveHeight(driftP - vec2(eps, 0.0), t, u_speed, perspFreqScale) -
+        waveHeight(driftP + vec2(eps, 0.0), t, u_speed, perspFreqScale),
+        waveHeight(driftP - vec2(0.0, eps), t, u_speed, perspFreqScale) -
+        waveHeight(driftP + vec2(0.0, eps), t, u_speed, perspFreqScale),
         0.08
       ));
       normal.xy *= (1.0 + shoreProx * 0.8);
@@ -222,9 +217,9 @@
       vec3 foamColor    = vec3(0.80, 0.96, 0.95);
 
       /* Build depth from noise + vertical position in canvas.
-         pow(uv.y, 0.65) expands the near-horizon (top) zone in
-         perspective so colour bands follow foreshortening.        */
-      float vertDepth  = 1.0 - pow(uv.y, 0.65);
+         uvYPow (shared with perspFreqScale) expands the horizon zone
+         so colour bands follow the perspective foreshortening.      */
+      float vertDepth  = 1.0 - uvYPow;
       float noiseDepth = smoothstep(0.25, 0.70, n);
       float depth      = mix(vertDepth * 0.55, noiseDepth, 0.45);
 
@@ -263,7 +258,6 @@
       color = mix(color, foamColor, crestMask * 0.55 * crestPulse);
 
       /* Horizon atmospheric fade */
-      float horizFade = 1.0 - uv.y;
       vec3 horizColor = mix(shallowColor, vec3(0.55, 0.82, 0.82), 0.5);
       color = mix(color, horizColor,
                   smoothstep(0.55, 0.95, uv.y) * 0.55);
@@ -273,7 +267,7 @@
       color *= (1.0 - cliffShadow);
 
       /* Open ocean brightness — right/far zone catches sky reflection */
-      float openOceanBright = smoothstep(0.45, 0.85, uv.x) * 0.15;
+      float openOceanBright = smoothstep(0.55, 0.85, uv.x) * 0.15;
       color += shallowColor * openOceanBright;
 
       /* Caustic sparkles */
