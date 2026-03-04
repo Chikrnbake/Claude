@@ -92,20 +92,40 @@
       float aspect = u_resolution.x / u_resolution.y;
       vec2  p      = vec2(uv.x * aspect, uv.y);
 
+      /* ── Perspective projection ────────────────────────────────────
+         Simulate a camera elevated above the water looking down at
+         ~35-40°, angled slightly right toward the open ocean.
+         Vanishing point sits at upper-right of the water canvas,
+         matching where the distant cliffs meet the horizon.
+      ─────────────────────────────────────────────────────────────── */
+      vec2  vanishingPoint = vec2(0.78, 0.08);
+      float perspDepth     = 2.8;
+      float horizonDist    = max(uv.y, 0.01);
+      float perspScale     = mix(0.12, 1.0,
+                                 pow(horizonDist, 1.0 / perspDepth));
+      float perspX         = vanishingPoint.x
+                           + (uv.x - vanishingPoint.x) / perspScale;
+      vec2  perspUV        = vec2(perspX * aspect, uv.y);
+
+      /* Frequency scale: horizon compressed, foreground spread out  */
+      float perspFreqScale = mix(3.5, 1.0, pow(uv.y, 0.7));
+
       /* ── Wave surface edge — animated waterline + foam ─────────── */
       float surfaceY =
-        sin(p.x * 2.8  + u_time * 0.45) * 0.038 +
-        sin(p.x * 5.6  - u_time * 0.70) * 0.022 +
-        sin(p.x * 9.3  + u_time * 0.95) * 0.012 +
-        sin(p.x * 1.4  - u_time * 0.25) * 0.048 +
-        snoise(vec2(p.x * 0.7, u_time * 0.15)) * 0.028;
-      float waterHorizon    = 0.92 + surfaceY;
+        sin(perspUV.x * 2.8  + u_time * 0.45) * 0.038 +
+        sin(perspUV.x * 5.6  - u_time * 0.70) * 0.022 +
+        sin(perspUV.x * 9.3  + u_time * 0.95) * 0.012 +
+        sin(perspUV.x * 1.4  - u_time * 0.25) * 0.048 +
+        snoise(vec2(perspUV.x * 0.7, u_time * 0.15)) * 0.028;
+      /* Horizon tilts upward toward the right (vanishing point side) */
+      float horizonTilt     = uv.x * 0.045;
+      float waterHorizon    = 0.92 + surfaceY - horizonTilt;
       float distFromSurface = uv.y - waterHorizon;
       float surfaceMask     = smoothstep(-0.010, 0.022, distFromSurface);
       float foamBand = (1.0 - smoothstep(0.0, 0.018, abs(distFromSurface + 0.005)))
-                     * (0.5 + snoise(vec2(p.x * 5.0, u_time * 0.65)) * 0.5);
+                     * (0.5 + snoise(vec2(perspUV.x * 5.0, u_time * 0.65)) * 0.5);
       float rollFoam = (1.0 - smoothstep(0.0, 0.030, abs(distFromSurface + 0.020)))
-                     * (0.3 + snoise(vec2(p.x * 3.8 + 1.3, u_time * 0.50)) * 0.4);
+                     * (0.3 + snoise(vec2(perspUV.x * 3.8 + 1.3, u_time * 0.50)) * 0.4);
 
       /* ── Scroll-driven energy ─────────────────────────────────── */
       float energy = 0.08 + u_speed * 0.22;
@@ -119,10 +139,10 @@
       float cycle     = mod(u_time * 0.04, 1.0);
       float flowPhase = abs(2.0 * cycle - 1.0);
 
-      vec2 flow1 = vec2(snoise(p * 0.65 + t * 0.11),
-                        snoise(p * 0.65 + vec2(7.3, 2.1)  + t * 0.09));
-      vec2 flow2 = vec2(snoise(p * 0.65 + vec2(3.7, 11.2) + t * 0.11),
-                        snoise(p * 0.65 + vec2(13.1, 5.9) + t * 0.09));
+      vec2 flow1 = vec2(snoise(perspUV * 0.65 + t * 0.11),
+                        snoise(perspUV * 0.65 + vec2(7.3, 2.1)  + t * 0.09));
+      vec2 flow2 = vec2(snoise(perspUV * 0.65 + vec2(3.7, 11.2) + t * 0.11),
+                        snoise(perspUV * 0.65 + vec2(13.1, 5.9) + t * 0.09));
       vec2 flow = mix(flow1, flow2, flowPhase);
 
       /* Swirl harder near the bottom-left (cliff base)            */
@@ -130,7 +150,7 @@
       float swirlMask = smoothstep(0.60, 0.06, cliffDist);
       float flowStr    = 0.11 + swirlMask * 0.16 + u_speed * 0.07;
 
-      vec2 advP = p + flow * flowStr;
+      vec2 advP = perspUV + flow * flowStr;
 
       /* ═══════════════════════════════════════════════════════════
          DISPLACEMENT MAP  —  warps contours as if viewed through
@@ -152,18 +172,22 @@
       /* ═══════════════════════════════════════════════════════════
          SURFACE RIPPLE  (deep swell is provided by Gerstner+sim)
       ═══════════════════════════════════════════════════════════ */
-      float rippleFreq = 14.0 + u_speed * 5.0;
+      float rippleFreq = (14.0 + u_speed * 5.0) * perspFreqScale;
       float ripple = snoise(warpedP * rippleFreq       + u_time * 0.18 + vec2(2.4, 6.8)) * 0.40
                    + snoise(warpedP * rippleFreq * 1.7 + u_time * 0.26)                  * 0.22;
       ripple *= (1.0 + shoreProx * 1.4);
 
       /* ═══════════════════════════════════════════════════════════
          GERSTNER SWELL + SHALLOW-WATER SIMULATION BLEND
+         Waves travel right→left, angled toward lower-left,
+         matching coastline running from lower-left to upper-right.
       ═══════════════════════════════════════════════════════════ */
-      float ampScale    = 1.0 + u_speed * 0.8;
-      float gerstnerSum = gerstnerWave(vec2(0.85, 0.52), 2.35, 0.027 * ampScale, 0.55, warpedP, t)
-                        + gerstnerWave(vec2(0.32, 0.94), 1.24, 0.017 * ampScale, 0.40, warpedP, t)
-                        + gerstnerWave(vec2(0.61, 0.79), 3.38, 0.011 * ampScale, 0.30, warpedP, t);
+      /* Drift: slight rightward-to-left translation of swell field */
+      vec2  driftP    = warpedP + vec2(-0.08, -0.04) * u_time * 0.012;
+      float ampScale  = 1.0 + u_speed * 0.8;
+      float gerstnerSum = gerstnerWave(vec2(-0.82, -0.42), 2.35, 0.027 * ampScale, 0.55, driftP, t)
+                        + gerstnerWave(vec2(-0.65, -0.72), 1.24, 0.017 * ampScale, 0.40, driftP, t)
+                        + gerstnerWave(vec2(-0.90, -0.18), 3.38, 0.011 * ampScale, 0.30, driftP, t);
 
       float simNormal = texture2D(u_simTex, uv).r * 2.0 - 1.0;
       float totalWave = gerstnerSum * 0.65 + simNormal * 0.35;
@@ -174,10 +198,10 @@
       ═══════════════════════════════════════════════════════════ */
       float eps = 0.0025;
       vec3 normal = normalize(vec3(
-        waveHeight(warpedP - vec2(eps, 0.0), t, u_speed) -
-        waveHeight(warpedP + vec2(eps, 0.0), t, u_speed),
-        waveHeight(warpedP - vec2(0.0, eps), t, u_speed) -
-        waveHeight(warpedP + vec2(0.0, eps), t, u_speed),
+        waveHeight(driftP - vec2(eps, 0.0), t, u_speed) -
+        waveHeight(driftP + vec2(eps, 0.0), t, u_speed),
+        waveHeight(driftP - vec2(0.0, eps), t, u_speed) -
+        waveHeight(driftP + vec2(0.0, eps), t, u_speed),
         0.08
       ));
       normal.xy *= (1.0 + shoreProx * 0.8);
@@ -197,8 +221,10 @@
       vec3 surfaceColor = vec3(0.20, 0.75, 0.68);
       vec3 foamColor    = vec3(0.80, 0.96, 0.95);
 
-      /* Build depth from noise + vertical position in canvas */
-      float vertDepth  = 1.0 - uv.y;
+      /* Build depth from noise + vertical position in canvas.
+         pow(uv.y, 0.65) expands the near-horizon (top) zone in
+         perspective so colour bands follow foreshortening.        */
+      float vertDepth  = 1.0 - pow(uv.y, 0.65);
       float noiseDepth = smoothstep(0.25, 0.70, n);
       float depth      = mix(vertDepth * 0.55, noiseDepth, 0.45);
 
@@ -241,6 +267,14 @@
       vec3 horizColor = mix(shallowColor, vec3(0.55, 0.82, 0.82), 0.5);
       color = mix(color, horizColor,
                   smoothstep(0.55, 0.95, uv.y) * 0.55);
+
+      /* Cliff shadow — left edge in shadow of cliffs */
+      float cliffShadow = smoothstep(0.55, 0.0, uv.x) * 0.20;
+      color *= (1.0 - cliffShadow);
+
+      /* Open ocean brightness — right/far zone catches sky reflection */
+      float openOceanBright = smoothstep(0.45, 0.85, uv.x) * 0.15;
+      color += shallowColor * openOceanBright;
 
       /* Caustic sparkles */
       color += foamColor * caustic * 0.28;
