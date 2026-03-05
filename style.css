@@ -49,6 +49,9 @@ body {
   transform: none;
   pointer-events: none;
   will-change: transform;
+  opacity: 1;
+  -webkit-mask-image: none;
+  mask-image: none;
 }
 
 /* ═══════════════════════════════════════════════════════════════════
