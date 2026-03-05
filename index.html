@@ -117,6 +117,11 @@
       float waterHorizon    = 0.92 + surfaceY - uv.x * 0.045;
       float distFromSurface = uv.y - waterHorizon;
       float surfaceMask     = smoothstep(-0.010, 0.022, distFromSurface);
+      /* Noisy soft horizon — varies per-pixel so the edge is never straight */
+      float horizonNoise    = snoise(vec2(uv.x * 3.5, u_time * 0.08)) * 0.06
+                            + snoise(vec2(uv.x * 7.2, u_time * 0.05)) * 0.03;
+      float softHorizon     = waterHorizon + horizonNoise;
+      float aboveHorizon    = smoothstep(softHorizon - 0.02, softHorizon + 0.16, uv.y);
       float foamBand = (1.0 - smoothstep(0.0, 0.018, abs(distFromSurface + 0.005)))
                      * (0.5 + snoise(vec2(perspUV.x * 5.0, u_time * 0.65)) * 0.5);
       float rollFoam = (1.0 - smoothstep(0.0, 0.030, abs(distFromSurface + 0.020)))
@@ -315,7 +320,24 @@
       float depthFade = smoothstep(0.0, 0.28, distFromSurface);
       color = mix(shallowColor * 0.55, color, depthFade);
 
-      float alpha = surfaceMask * topFade * clamp(vign, 0.0, 1.0);
+      /* Misty colour dissolve toward sky at the horizon edge */
+      float horizonBlend = smoothstep(softHorizon + 0.14, softHorizon - 0.02, uv.y);
+      vec3  skyEdgeColor = vec3(0.08, 0.42, 0.50);
+      color = mix(color, skyEdgeColor, horizonBlend * 0.75);
+      float luma = dot(color, vec3(0.299, 0.587, 0.114));
+      color = mix(color, vec3(luma), horizonBlend * 0.45);
+
+      float alpha = topFade * clamp(vign, 0.0, 1.0);
+      /* Wave intrusions break the horizon into organic crests */
+      float waveIntrude =
+        sin(uv.x *  8.5 + u_time * 0.40) * 0.018 +
+        sin(uv.x * 14.2 - u_time * 0.55) * 0.011 +
+        sin(uv.x *  5.1 + u_time * 0.28) * 0.024 +
+        snoise(vec2(uv.x * 4.0, u_time * 0.12)) * 0.020;
+      float intrudedHorizon = softHorizon - waveIntrude;
+      float waveEdgeAlpha   = smoothstep(intrudedHorizon - 0.01,
+                                         intrudedHorizon + 0.08, uv.y);
+      alpha *= max(aboveHorizon, waveEdgeAlpha * 0.65);
       gl_FragColor = vec4(color, alpha);
     }
   </script>
