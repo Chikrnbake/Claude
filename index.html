@@ -118,10 +118,11 @@
       float distFromSurface = uv.y - waterHorizon;
       float surfaceMask     = smoothstep(-0.010, 0.022, distFromSurface);
       /* Noisy soft horizon — varies per-pixel so the edge is never straight */
-      float horizonNoise    = snoise(vec2(uv.x * 3.5, u_time * 0.08)) * 0.06
-                            + snoise(vec2(uv.x * 7.2, u_time * 0.05)) * 0.03;
+      float horizonNoise    = snoise(vec2(uv.x *  2.8, u_time * 0.07)) * 0.055
+                            + snoise(vec2(uv.x *  6.5, u_time * 0.04)) * 0.028
+                            + snoise(vec2(uv.x * 11.0, u_time * 0.09)) * 0.014;
       float softHorizon     = waterHorizon + horizonNoise;
-      float aboveHorizon    = smoothstep(softHorizon - 0.02, softHorizon + 0.16, uv.y);
+      float aboveHorizon    = smoothstep(softHorizon - 0.03, softHorizon + 0.22, uv.y);
       float foamBand = (1.0 - smoothstep(0.0, 0.018, abs(distFromSurface + 0.005)))
                      * (0.5 + snoise(vec2(perspUV.x * 5.0, u_time * 0.65)) * 0.5);
       float rollFoam = (1.0 - smoothstep(0.0, 0.030, abs(distFromSurface + 0.020)))
@@ -280,7 +281,7 @@
 
       /* Vignette */
       vec2  vp   = uv - 0.5;
-      float vign = 1.0 - dot(vp, vp) * 0.85;
+      float vign = 1.0 - dot(vp, vp) * 0.45;
       color *= clamp(vign, 0.0, 1.0);
 
       /* Top fade */
@@ -327,17 +328,32 @@
       float luma = dot(color, vec3(0.299, 0.587, 0.114));
       color = mix(color, vec3(luma), horizonBlend * 0.45);
 
-      float alpha = topFade * clamp(vign, 0.0, 1.0);
+      /* Boost colour richness in the lower solid water body */
+      float bodyBoost = smoothstep(softHorizon + 0.12,
+                                   softHorizon + 0.28, uv.y);
+      color = mix(color, color * 1.25, bodyBoost);
+      color = clamp(color, 0.0, 1.0);
+
+      /* Below the horizon the water is fully opaque */
+      float bodyAlpha = smoothstep(softHorizon + 0.05,
+                                   softHorizon + 0.20, uv.y);
+      /* Left edge fade where water meets the cliff */
+      float leftFade = smoothstep(0.0, 0.12, uv.x);
+
       /* Wave intrusions break the horizon into organic crests */
       float waveIntrude =
-        sin(uv.x *  8.5 + u_time * 0.40) * 0.018 +
-        sin(uv.x * 14.2 - u_time * 0.55) * 0.011 +
-        sin(uv.x *  5.1 + u_time * 0.28) * 0.024 +
-        snoise(vec2(uv.x * 4.0, u_time * 0.12)) * 0.020;
+        sin(uv.x *  8.5 + u_time * 0.40) * 0.028 +
+        sin(uv.x * 14.2 - u_time * 0.55) * 0.018 +
+        sin(uv.x *  5.1 + u_time * 0.28) * 0.035 +
+        snoise(vec2(uv.x * 4.0, u_time * 0.12)) * 0.030;
       float intrudedHorizon = softHorizon - waveIntrude;
       float waveEdgeAlpha   = smoothstep(intrudedHorizon - 0.01,
                                          intrudedHorizon + 0.08, uv.y);
-      alpha *= max(aboveHorizon, waveEdgeAlpha * 0.65);
+      float alpha = aboveHorizon;
+      alpha = max(alpha, bodyAlpha);
+      alpha = max(alpha, waveEdgeAlpha * 0.65);
+      alpha *= clamp(vign, 0.0, 1.0);
+      alpha *= leftFade;
       gl_FragColor = vec4(color, alpha);
     }
   </script>
