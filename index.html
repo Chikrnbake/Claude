@@ -222,7 +222,7 @@
          so colour bands follow the perspective foreshortening.      */
       float vertDepth  = 1.0 - uvYPow;
       float noiseDepth = smoothstep(0.25, 0.70, n);
-      float depth      = mix(vertDepth * 0.55, noiseDepth, 0.45);
+      float depth      = mix(vertDepth * 0.30, noiseDepth, 0.70);
 
       /* Layer the depth zones */
       vec3 color = abyssColor;
@@ -246,12 +246,12 @@
       /* Horizontal swell bands */
       float swellBand = sin(warpedP.y * 18.0 - u_time * 0.25)
                         * 0.5 + 0.5;
-      swellBand = smoothstep(0.40, 0.60, swellBand) * 0.14;
+      swellBand = smoothstep(0.40, 0.60, swellBand) * 0.22;
       color += midColor * swellBand;
 
       /* Secondary chop */
       float chop = snoise(warpedP * 12.0 + vec2(u_time * 0.28, 0.0));
-      chop = smoothstep(0.55, 0.80, chop * 0.5 + 0.5) * 0.10;
+      chop = smoothstep(0.55, 0.80, chop * 0.5 + 0.5) * 0.16;
       color += shallowColor * chop;
 
       /* Crest foam */
@@ -352,20 +352,25 @@
       float vign = 1.0 - dot(vp, vp) * 0.35;
       alpha *= clamp(vign, 0.0, 1.0);
 
+      /* Top-edge fade — dissolves alpha at canvas top so the waterline
+         blends softly into the sky instead of cutting as a hard line   */
+      float topEdgeFade = 1.0 - smoothstep(0.78, 1.0, uv.y);
+      alpha *= topEdgeFade;
+
       /* Colour richness boost in the solid water body */
       float bodyDepth = smoothstep(softHorizon + 0.06,
                                     softHorizon + 0.22, uv.y);
       color *= (1.0 + bodyDepth * 0.30);
       color  = clamp(color, 0.0, 1.0);
 
-      /* Colour dissolve at waterline — shifts toward sky so there is
-         no hard colour edge where the water is partially transparent */
-      float edgeBlend = smoothstep(softHorizon + 0.08,
-                                    softHorizon - 0.02, uv.y);
-      vec3  skyEdge   = vec3(0.06, 0.38, 0.48);
-      color = mix(color, skyEdge, edgeBlend * 0.60);
+      /* Colour dissolve at the canvas top-edge (the waterline) —
+         shifts colour toward sky-teal and desaturates so the water
+         fades naturally into the sky with no visible hard boundary  */
+      float edgeBlend = smoothstep(0.72, 1.0, uv.y);
+      vec3  skyEdge   = vec3(0.08, 0.44, 0.54);
+      color = mix(color, skyEdge, edgeBlend * 0.65);
       float luma = dot(color, vec3(0.299, 0.587, 0.114));
-      color = mix(color, vec3(luma), edgeBlend * 0.35);
+      color = mix(color, vec3(luma), edgeBlend * 0.40);
 
       gl_FragColor = vec4(color, alpha);
     }
