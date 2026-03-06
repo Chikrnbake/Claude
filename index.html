@@ -231,17 +231,46 @@
       color = mix(color, shallowColor, smoothstep(0.48, 0.70, depth));
       color = mix(color, surfaceColor, smoothstep(0.65, 0.85, depth));
 
-      /* Sunlight columns */
-      float sunShaft = snoise(vec2(warpedP.x * 1.4 + u_time * 0.04,
-                                   warpedP.y * 0.6)) * 0.5 + 0.5;
-      sunShaft = pow(sunShaft, 3.0) * 0.28;
-      color += surfaceColor * sunShaft * (1.0 - vertDepth * 0.7);
+      /* ── Perspective depth proxy and surface coordinate alias ─────── */
+      float groundZ = uv.y * 25.0;   /* 0 = close foreground, 25 = horizon  */
+      vec2  surf    = warpedP;        /* perspective-warped surface UV alias  */
 
-      /* Surface shimmer */
-      float shimmer = snoise(warpedP * 22.0 + u_time * 0.35);
-      shimmer = pow(max(shimmer, 0.0), 3.5) * 0.45;
-      color += foamColor * shimmer * crestPulse
-               * smoothstep(0.60, 0.85, n);
+      /* ── Moonlight shimmer on the water surface ──────────────────── */
+      /* Slow diagonal light columns simulating moonlight penetrating   */
+      /* and reflecting off the water                                   */
+      float sunShaft = snoise(vec2(
+        surf.x * 1.2 + u_time * 0.035,
+        surf.y * 0.5
+      )) * 0.5 + 0.5;
+      sunShaft = pow(sunShaft, 3.0) * 0.32;
+      /* Shafts are stronger in the foreground, fade at distance        */
+      float shaftFade = clamp(1.0 - groundZ * 0.04, 0.0, 1.0);
+      color += surfaceColor * sunShaft * shaftFade;
+
+      /* ── Surface sparkle — small bright glints ───────────────────── */
+      /* High frequency noise creates individual light points           */
+      /* dancing on the water like moonlight on ripples                 */
+      float sparkle = snoise(surf * 18.0 + u_time * 0.40);
+      sparkle = pow(max(sparkle, 0.0), 4.5) * 0.55;
+      color += vec3(0.85, 0.97, 1.00) * sparkle * crestPulse * shaftFade;
+
+      /* ── Broad surface luminosity pulse ──────────────────────────── */
+      /* Slow rolling brightness variation as light catches different   */
+      /* parts of the swell                                             */
+      float lumPulse = snoise(vec2(
+        surf.x * 0.4 + u_time * 0.018,
+        surf.y * 0.3 + u_time * 0.012
+      )) * 0.5 + 0.5;
+      lumPulse = smoothstep(0.35, 0.75, lumPulse) * 0.22;
+      color += midColor * lumPulse;
+
+      /* ── Specular highlight band ──────────────────────────────────── */
+      /* Broad brighter zone toward right-center where moon/sky         */
+      /* reflects most directly                                          */
+      float specBand = smoothstep(0.35, 0.65, uv.x)
+                     * smoothstep(0.85, 0.55, uv.x);
+      specBand *= smoothstep(0.50, 0.30, uv.y) * 0.28;
+      color += vec3(0.60, 0.90, 0.88) * specBand * crestPulse;
 
       /* Horizontal swell bands */
       float swellBand = sin(warpedP.y * 18.0 - u_time * 0.25)
@@ -257,6 +286,37 @@
       /* Crest foam */
       float crestMask = smoothstep(0.72, 0.90, n);
       color = mix(color, foamColor, crestMask * 0.55 * crestPulse);
+
+      /* ── Foam wave lines traveling toward the cliffs ─────────────── */
+      vec2  waveDir    = normalize(vec2(-0.70, -0.45));
+      float travel     = dot(surf, waveDir) - u_time * 0.75;
+      float wavePattern = pow(sin(travel * 4.8 + surf.x * 0.28) * 0.5 + 0.5, 5.0)
+                        * clamp(1.0 - groundZ * 0.040, 0.0, 1.0);
+
+      /* Smaller faster waves between the main foam lines               */
+      float travel2   = dot(surf * 0.55, waveDir) - u_time * 1.20;
+      float choppyA   = pow(sin(travel2 * 3.50
+                        + surf.x * 0.55) * 0.5 + 0.5, 8.0);
+      float choppyB   = pow(sin(travel2 * 4.80
+                        - surf.x * 0.38) * 0.5 + 0.5, 9.0);
+      float choppyPat = (choppyA * 0.55 + choppyB * 0.45)
+                      * clamp(1.0 - groundZ * 0.055, 0.0, 1.0);
+
+      /* Foam colours: soft glow halo and sharp bright core             */
+      vec3  foamTeal   = vec3(0.75, 0.97, 0.95);
+      vec3  foamWhite  = vec3(0.94, 1.00, 1.00);
+      /* Scale by perspective — close waves bright/wide, far waves faint */
+      float perspFoam  = clamp(1.0 - groundZ * 0.032, 0.10, 1.0);
+      float foamGlow   = smoothstep(0.20, 0.65, wavePattern) * perspFoam;
+      float foamCore   = smoothstep(0.52, 0.82, wavePattern) * perspFoam;
+      /* Trough darkening makes the white crests stand out clearly      */
+      float troughMask = 1.0 - smoothstep(0.0, 0.40, wavePattern);
+      color *= (1.0 - troughMask * 0.28);
+      /* Apply: glow halo first, sharp bright core on top, then choppy  */
+      color  = mix(color, foamTeal,  foamGlow  * 0.50);
+      color  = mix(color, foamWhite, foamCore  * 0.85 * crestPulse);
+      color  = mix(color, foamTeal,  choppyPat * 0.38);
+      color  = mix(color, foamWhite, choppyPat * 0.28 * crestPulse);
 
       /* Horizon atmospheric fade */
       vec3 horizColor = mix(shallowColor, vec3(0.55, 0.82, 0.82), 0.5);
