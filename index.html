@@ -114,15 +114,10 @@
         sin(perspUV.x * 1.4  - u_time * 0.25) * 0.048 +
         snoise(vec2(perspUV.x * 0.7, u_time * 0.15)) * 0.028;
       /* Horizon tilts upward toward the right (vanishing point side) */
+      float horizon         = 0.12;   /* waterline position in canvas UV space */
       float waterHorizon    = 0.92 + surfaceY - uv.x * 0.045;
       float distFromSurface = uv.y - waterHorizon;
       float surfaceMask     = smoothstep(-0.010, 0.022, distFromSurface);
-      /* Noisy soft horizon — varies per-pixel so the edge is never straight */
-      float horizonNoise    = snoise(vec2(uv.x *  2.8, u_time * 0.07)) * 0.055
-                            + snoise(vec2(uv.x *  6.5, u_time * 0.04)) * 0.028
-                            + snoise(vec2(uv.x * 11.0, u_time * 0.09)) * 0.014;
-      float softHorizon     = waterHorizon + horizonNoise;
-      float aboveHorizon    = smoothstep(softHorizon - 0.03, softHorizon + 0.22, uv.y);
       float foamBand = (1.0 - smoothstep(0.0, 0.018, abs(distFromSurface + 0.005)))
                      * (0.5 + snoise(vec2(perspUV.x * 5.0, u_time * 0.65)) * 0.5);
       float rollFoam = (1.0 - smoothstep(0.0, 0.030, abs(distFromSurface + 0.020)))
@@ -266,7 +261,7 @@
       /* Horizon atmospheric fade */
       vec3 horizColor = mix(shallowColor, vec3(0.55, 0.82, 0.82), 0.5);
       color = mix(color, horizColor,
-                  smoothstep(0.55, 0.95, uv.y) * 0.55);
+                  smoothstep(0.55, 0.95, uv.y) * 0.30);
 
       /* Cliff shadow — left edge in shadow of cliffs */
       float cliffShadow = smoothstep(0.55, 0.0, uv.x) * 0.20;
@@ -279,14 +274,8 @@
       /* Caustic sparkles */
       color += foamColor * caustic * 0.28;
 
-      /* Vignette */
-      vec2  vp   = uv - 0.5;
-      float vign = 1.0 - dot(vp, vp) * 0.45;
-      color *= clamp(vign, 0.0, 1.0);
-
-      /* Top fade */
-      float topFade = smoothstep(0.0, 0.22, uv.y);
-      color *= topFade;
+      /* vp is used in the alpha section below */
+      vec2 vp = uv - 0.5;
 
       /* ═══════════════════════════════════════════════════════════
          3-D LIGHTING
@@ -321,39 +310,63 @@
       float depthFade = smoothstep(0.0, 0.28, distFromSurface);
       color = mix(shallowColor * 0.55, color, depthFade);
 
-      /* Misty colour dissolve toward sky at the horizon edge */
-      float horizonBlend = smoothstep(softHorizon + 0.14, softHorizon - 0.02, uv.y);
-      vec3  skyEdgeColor = vec3(0.08, 0.42, 0.50);
-      color = mix(color, skyEdgeColor, horizonBlend * 0.75);
-      float luma = dot(color, vec3(0.299, 0.587, 0.114));
-      color = mix(color, vec3(luma), horizonBlend * 0.45);
+      /* ── Alpha & colour dissolve ──────────────────────────────────── */
+      /* Horizon noise — irregular edge */
+      float horizonNoise =
+          snoise(vec2(uv.x *  2.8, u_time * 0.07)) * 0.055
+        + snoise(vec2(uv.x *  6.5, u_time * 0.04)) * 0.028
+        + snoise(vec2(uv.x * 11.0, u_time * 0.09)) * 0.014;
+      float softHorizon = horizon + horizonNoise;
 
-      /* Boost colour richness in the lower solid water body */
-      float bodyBoost = smoothstep(softHorizon + 0.12,
-                                   softHorizon + 0.28, uv.y);
-      color = mix(color, color * 1.25, bodyBoost);
-      color = clamp(color, 0.0, 1.0);
-
-      /* Below the horizon the water is fully opaque */
-      float bodyAlpha = smoothstep(softHorizon + 0.05,
-                                   softHorizon + 0.20, uv.y);
-      /* Left edge fade where water meets the cliff */
-      float leftFade = smoothstep(0.0, 0.12, uv.x);
-
-      /* Wave intrusions break the horizon into organic crests */
+      /* Wave intrusions into the dissolve zone */
       float waveIntrude =
         sin(uv.x *  8.5 + u_time * 0.40) * 0.028 +
         sin(uv.x * 14.2 - u_time * 0.55) * 0.018 +
         sin(uv.x *  5.1 + u_time * 0.28) * 0.035 +
         snoise(vec2(uv.x * 4.0, u_time * 0.12)) * 0.030;
       float intrudedHorizon = softHorizon - waveIntrude;
-      float waveEdgeAlpha   = smoothstep(intrudedHorizon - 0.01,
-                                         intrudedHorizon + 0.08, uv.y);
-      float alpha = aboveHorizon;
-      alpha = max(alpha, bodyAlpha);
-      alpha = max(alpha, waveEdgeAlpha * 0.65);
-      alpha *= clamp(vign, 0.0, 1.0);
+
+      /* Top dissolve zone — narrow band near the waterline */
+      float topDissolve = smoothstep(intrudedHorizon - 0.02,
+                                      intrudedHorizon + 0.09, uv.y);
+
+      /* Body fill — fully opaque more than ~0.08 below the horizon */
+      float bodyFill = smoothstep(softHorizon + 0.02,
+                                   softHorizon + 0.09, uv.y);
+
+      /* Combine — body is always full */
+      float alpha = max(topDissolve, bodyFill);
+
+      /* Left fade follows the diagonal cliff edge */
+      float cliffEdge = mix(0.18, 0.52, 1.0 - uv.y);
+      float leftFade  = smoothstep(cliffEdge - 0.06,
+                                   cliffEdge + 0.18, uv.x);
       alpha *= leftFade;
+
+      /* Above horizon is always transparent */
+      float aboveHorizon = smoothstep(softHorizon - 0.03,
+                                       softHorizon + 0.10, uv.y);
+      alpha *= aboveHorizon;
+
+      /* Vignette — subtle, does not darken the water body */
+      float vign = 1.0 - dot(vp, vp) * 0.35;
+      alpha *= clamp(vign, 0.0, 1.0);
+
+      /* Colour richness boost in the solid water body */
+      float bodyDepth = smoothstep(softHorizon + 0.06,
+                                    softHorizon + 0.22, uv.y);
+      color *= (1.0 + bodyDepth * 0.30);
+      color  = clamp(color, 0.0, 1.0);
+
+      /* Colour dissolve at waterline — shifts toward sky so there is
+         no hard colour edge where the water is partially transparent */
+      float edgeBlend = smoothstep(softHorizon + 0.08,
+                                    softHorizon - 0.02, uv.y);
+      vec3  skyEdge   = vec3(0.06, 0.38, 0.48);
+      color = mix(color, skyEdge, edgeBlend * 0.60);
+      float luma = dot(color, vec3(0.299, 0.587, 0.114));
+      color = mix(color, vec3(luma), edgeBlend * 0.35);
+
       gl_FragColor = vec4(color, alpha);
     }
   </script>
