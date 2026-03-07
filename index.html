@@ -231,17 +231,46 @@
       color = mix(color, shallowColor, smoothstep(0.48, 0.70, depth));
       color = mix(color, surfaceColor, smoothstep(0.65, 0.85, depth));
 
-      /* Sunlight columns */
-      float sunShaft = snoise(vec2(warpedP.x * 1.4 + u_time * 0.04,
-                                   warpedP.y * 0.6)) * 0.5 + 0.5;
-      sunShaft = pow(sunShaft, 3.0) * 0.28;
-      color += surfaceColor * sunShaft * (1.0 - vertDepth * 0.7);
+      /* ── Perspective depth proxy and surface coordinate alias ─────── */
+      float groundZ = uv.y * 25.0;   /* 0 = close foreground, 25 = horizon  */
+      vec2  surf    = warpedP;        /* perspective-warped surface UV alias  */
 
-      /* Surface shimmer */
-      float shimmer = snoise(warpedP * 22.0 + u_time * 0.35);
-      shimmer = pow(max(shimmer, 0.0), 3.5) * 0.45;
-      color += foamColor * shimmer * crestPulse
-               * smoothstep(0.60, 0.85, n);
+      /* ── Moonlight shimmer on the water surface ──────────────────── */
+      /* Slow diagonal light columns simulating moonlight penetrating   */
+      /* and reflecting off the water                                   */
+      float sunShaft = snoise(vec2(
+        surf.x * 1.2 + u_time * 0.035,
+        surf.y * 0.5
+      )) * 0.5 + 0.5;
+      sunShaft = pow(sunShaft, 2.2) * 0.52;   /* wider, brighter shafts */
+      /* Shafts are stronger in the foreground, fade at distance        */
+      float shaftFade = clamp(1.0 - groundZ * 0.04, 0.0, 1.0);
+      color += surfaceColor * sunShaft * shaftFade;
+
+      /* ── Surface sparkle — small bright glints ───────────────────── */
+      /* High frequency noise creates individual light points           */
+      /* dancing on the water like moonlight on ripples                 */
+      float sparkle = snoise(surf * 18.0 + u_time * 0.40);
+      sparkle = pow(max(sparkle, 0.0), 3.2) * 0.90;  /* more frequent, brighter glints */
+      color += vec3(0.85, 0.97, 1.00) * sparkle * crestPulse * shaftFade;
+
+      /* ── Broad surface luminosity pulse ──────────────────────────── */
+      /* Slow rolling brightness variation as light catches different   */
+      /* parts of the swell                                             */
+      float lumPulse = snoise(vec2(
+        surf.x * 0.4 + u_time * 0.018,
+        surf.y * 0.3 + u_time * 0.012
+      )) * 0.5 + 0.5;
+      lumPulse = smoothstep(0.35, 0.75, lumPulse) * 0.22;
+      color += midColor * lumPulse;
+
+      /* ── Specular highlight band ──────────────────────────────────── */
+      /* Broad brighter zone toward right-center where moon/sky         */
+      /* reflects most directly                                          */
+      float specBand = smoothstep(0.35, 0.65, uv.x)
+                     * smoothstep(0.85, 0.55, uv.x);
+      specBand *= smoothstep(0.50, 0.30, uv.y) * 0.28;
+      color += vec3(0.60, 0.90, 0.88) * specBand * crestPulse;
 
       /* Horizontal swell bands */
       float swellBand = sin(warpedP.y * 18.0 - u_time * 0.25)
@@ -257,6 +286,48 @@
       /* Crest foam */
       float crestMask = smoothstep(0.72, 0.90, n);
       color = mix(color, foamColor, crestMask * 0.55 * crestPulse);
+
+      /* ── Snake wave bands — slow, curvy, parallel to cliff face ───── */
+      /* Crest lines run lower-left → upper-right (same diagonal as the  */
+      /* cliff face). Travel direction is perpendicular: ocean → cliff.   */
+      vec2  snakeDir  = normalize(vec2(-0.68, 0.52));
+
+      /* Low-frequency noise warps the phase so each band bends and       */
+      /* snakes rather than staying a straight line.                       */
+      float snakeWarp = snoise(surf * 0.30 + u_time * 0.050) * 0.52
+                      + snoise(surf * 0.68 + u_time * 0.036 + vec2(4.8, 2.3)) * 0.24;
+
+      /* Primary snake bands — wide, slow, languid S-curves               */
+      float snakePhase = dot(surf, snakeDir) + snakeWarp - u_time * 0.15;
+      float snakeWave  = pow(sin(snakePhase * 2.5) * 0.5 + 0.5, 4.0);
+
+      /* Secondary finer snakes — slightly faster, fill gaps              */
+      float snakePhase2 = dot(surf, snakeDir) + snakeWarp * 0.65 - u_time * 0.24;
+      float snakeWave2  = pow(sin(snakePhase2 * 4.8 + snakeWarp * 0.6) * 0.5 + 0.5, 6.0);
+
+      /* Perspective fade: close waves are broader and brighter           */
+      float snakeFade = clamp(1.0 - groundZ * 0.028, 0.08, 1.0);
+      snakeWave  *= snakeFade;
+      snakeWave2 *= snakeFade;
+
+      vec3  foamTeal  = vec3(0.75, 0.97, 0.95);
+      vec3  foamWhite = vec3(0.94, 1.00, 1.00);
+
+      /* Trough darkening so white crests pop against darker water        */
+      float snakeTrough = 1.0 - smoothstep(0.0, 0.40, snakeWave);
+      color *= (1.0 - snakeTrough * 0.26);
+
+      /* Primary snake: broad teal glow then sharp white crest            */
+      float snakeGlow = smoothstep(0.26, 0.72, snakeWave);
+      float snakeCore = smoothstep(0.56, 0.88, snakeWave);
+      color = mix(color, foamTeal,  snakeGlow * 0.55);
+      color = mix(color, foamWhite, snakeCore * 0.92 * crestPulse);
+
+      /* Secondary finer lines — translucent teal glimmer                 */
+      float snakeGlow2 = smoothstep(0.38, 0.76, snakeWave2);
+      float snakeCore2 = smoothstep(0.64, 0.92, snakeWave2);
+      color = mix(color, foamTeal,  snakeGlow2 * 0.38);
+      color = mix(color, foamWhite, snakeCore2 * 0.62 * crestPulse);
 
       /* Horizon atmospheric fade */
       vec3 horizColor = mix(shallowColor, vec3(0.55, 0.82, 0.82), 0.5);
@@ -274,6 +345,17 @@
       /* Caustic sparkles */
       color += foamColor * caustic * 0.28;
 
+      /* ── Sun path reflection ──────────────────────────────────────── */
+      /* Broad diagonal strip of direct sun/sky reflection, strongest in  */
+      /* the right-centre where the viewing angle catches the light.       */
+      float sunPathX = smoothstep(0.35, 0.60, uv.x)
+                     * smoothstep(0.95, 0.60, uv.x);
+      float sunPathY = smoothstep(0.82, 0.40, uv.y);
+      /* Animate with wave noise so it shimmers and shifts                 */
+      float sunGlint = snoise(surf * 5.5 + u_time * 0.10) * 0.5 + 0.5;
+      float sunPath  = sunPathX * sunPathY * (0.45 + sunGlint * 0.55);
+      color += vec3(0.90, 1.00, 0.97) * sunPath * 0.48 * crestPulse;
+
       /* vp is used in the alpha section below */
       vec2 vp = uv - 0.5;
 
@@ -286,12 +368,12 @@
       vec3  lightDir = vec3(0.4243, 0.5657, 0.7071);
       vec3  halfVec  = vec3(0.2683, 0.3578, 0.8944);
       float diffuse  = max(dot(normal, lightDir), 0.0);
-      float spec     = pow(max(dot(normal, halfVec), 0.0), 48.0);
+      float spec     = pow(max(dot(normal, halfVec), 0.0), 28.0);  /* wider glints */
       float fresnel  = pow(1.0 - max(normal.z, 0.0), 3.0);
 
       color *= (0.55 + diffuse * 0.55);
       color += vec3(0.10, 0.55, 0.60) * fresnel * 0.45;
-      color += vec3(0.85, 0.97, 1.00) * spec    * 0.90;
+      color += vec3(0.88, 0.98, 1.00) * spec    * 1.55;  /* stronger sun glint */
       color *= (1.0 - smoothstep(0.55, 0.30, n) * 0.35);
 
       /* ═══════════════════════════════════════════════════════════
