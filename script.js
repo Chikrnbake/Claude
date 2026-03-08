@@ -310,7 +310,7 @@ function tick() {
   rawSpeed    = Math.abs(scrollY - lastScrollY);
   lastScrollY = scrollY;
   /* Exponential smoothing — speed decays gracefully after stop */
-  smoothSpeed  += (Math.min(rawSpeed / 12, 1.0) - smoothSpeed) * 0.08;
+  smoothSpeed  += (Math.min(rawSpeed / 12, 1.0) - smoothSpeed) * 0.06;
   smoothScrollY += (scrollY - smoothScrollY) * 0.07;
 
   /* ── c) Ocean canvas rise ── */
