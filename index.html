@@ -108,7 +108,7 @@
   float curveC = snoise(vec2(surf.x * 0.38 + u_time * 0.030,
                               surf.y * 0.22 + 3.5)) * 1.0;
   /* ── Primary swells — large slow rolling waves ────────── */
-  float st = dot(surf * 0.30, waveDir);
+  float st = dot(surf * 0.14, waveDir);
   float s1 = sin(st * 1.00 - u_time * 0.32 + curveA * 0.40)
              * 0.5 + 0.5;
   float s2 = sin(st * 1.55 - u_time * 0.45 + surf.x * 0.20
@@ -116,7 +116,7 @@
   float s3 = sin(st * 0.70 - u_time * 0.24 - surf.x * 0.16
              + curveA * 0.28) * 0.5 + 0.5;
   /* ── Cross swells — second wave system at an angle ───── */
-  float ct = dot(surf * 0.26, crossDir);
+  float ct = dot(surf * 0.12, crossDir);
   float c1 = sin(ct * 1.20 - u_time * 0.38 + curveB * 0.32)
              * 0.5 + 0.5;
   float c2 = sin(ct * 0.85 - u_time * 0.28 + surf.y * 0.08)
@@ -127,17 +127,17 @@
   /* ── Foam wave lines on top of swells ────────────────── */
   vec2  bentSurf = surf + vec2(curveA * 0.45 + curveB * 0.25,
                                 curveB * 0.20);
-  float ft = dot(bentSurf * 0.50, waveDir) - u_time * 0.62;
-  float f1 = pow(sin(ft * 1.10 + curveB * 0.20)
-             * 0.5 + 0.5, 6.0);
-  float f2 = pow(sin(ft * 1.70 + surf.x * 0.22
-             + curveC * 0.30) * 0.5 + 0.5, 7.0);
-  float f3 = pow(sin(ft * 0.80 - surf.x * 0.18
-             + curveA * 0.18) * 0.5 + 0.5, 5.5);
-  float f4 = pow(sin(ft * 2.80 + curveC * 0.45
-             - u_time * 0.22) * 0.5 + 0.5, 9.0);
-  float f5 = pow(sin(ft * 4.20 + surf.x * 0.38
-             - u_time * 0.35) * 0.5 + 0.5, 11.0);
+  float ft = dot(bentSurf * 0.22, waveDir) - u_time * 0.62;
+  float f1 = pow(sin(ft * 0.55 + curveB * 0.20)
+             * 0.5 + 0.5, 4.0);
+  float f2 = pow(sin(ft * 0.85 + surf.x * 0.22
+             + curveC * 0.30) * 0.5 + 0.5, 4.5);
+  float f3 = pow(sin(ft * 0.40 - surf.x * 0.18
+             + curveA * 0.18) * 0.5 + 0.5, 3.8);
+  float f4 = pow(sin(ft * 1.40 + curveC * 0.45
+             - u_time * 0.22) * 0.5 + 0.5, 5.5);
+  float f5 = pow(sin(ft * 2.10 + surf.x * 0.38
+             - u_time * 0.35) * 0.5 + 0.5, 7.0);
   float foamPat = f1 * 0.35 + f2 * 0.26 + f3 * 0.20
                 + f4 * 0.12 + f5 * 0.08;
   foamPat = clamp(foamPat, 0.0, 1.0);
@@ -176,15 +176,15 @@
   float shimFade = clamp(1.0 - groundZ * 0.038, 0.0, 1.0);
   color += vec3(0.80, 0.96, 0.95) * shimmer * shimFade;
   /* ── Foam overlay — three pass ────────────────────────── */
-  float fGlow = smoothstep(0.14, 0.55, foamPat);
-  float fCore = smoothstep(0.46, 0.78, foamPat);
-  float fPeak = smoothstep(0.70, 0.90, foamPat);
+  float fGlow = smoothstep(0.10, 0.45, foamPat);
+  float fCore = smoothstep(0.35, 0.68, foamPat);
+  float fPeak = smoothstep(0.58, 0.82, foamPat);
   float pulse = sin(u_time * 0.9 + totalSwell * 6.28)
                 * 0.10 + 1.0;
   color = mix(color, foamTeal,  fGlow * 0.40 * perspScale);
-  color = mix(color, foamWhite, fCore * 0.80 * perspScale
+  color = mix(color, foamWhite, fCore * 0.92 * perspScale
                                              * pulse);
-  color = mix(color, foamPure,  fPeak * 0.92 * perspScale
+  color = mix(color, foamPure,  fPeak * 0.98 * perspScale
                                              * pulse);
   /* ── Cliff shadow on left ─────────────────────────────── */
   float cliffShad = smoothstep(0.50, 0.0, uv.x) * 0.25;
@@ -229,6 +229,35 @@
                                uv.x);
   alpha *= leftFade;
   alpha *= clamp(vign, 0.0, 1.0);
+  /* ── Shoreline mist at cliff/water meeting zone ─────────────── */
+  float mistEdge  = mix(0.20, 0.58, 1.0 - uv.y);
+  float mistZoneX = 1.0 - smoothstep(mistEdge - 0.05,
+                                      mistEdge + 0.30, uv.x);
+  float mistZoneY = smoothstep(0.28, 0.48, uv.y)
+                  * smoothstep(0.90, 0.60, uv.y);
+  float mistMask  = mistZoneX * mistZoneY;
+  float mist1 = snoise(vec2(
+    uv.x * 3.5 + u_time * 0.045,
+    uv.y * 2.8 - u_time * 0.022
+  )) * 0.5 + 0.5;
+  float mist2 = snoise(vec2(
+    uv.x * 6.8 - u_time * 0.038,
+    uv.y * 5.2 + u_time * 0.018
+  )) * 0.5 + 0.5;
+  float mist3 = snoise(vec2(
+    uv.x * 1.8 + u_time * 0.028,
+    uv.y * 1.4 + u_time * 0.012
+  )) * 0.5 + 0.5;
+  float mistShape     = mist1 * 0.45 + mist2 * 0.30 + mist3 * 0.25;
+  float mistWisp      = smoothstep(0.38, 0.68, mistShape);
+  float mistIntensity = mistWisp * mistMask * 0.55;
+  vec3 mistColor = mix(
+    vec3(0.55, 0.80, 0.82),
+    vec3(0.82, 0.92, 0.94),
+    smoothstep(0.45, 0.72, mistShape)
+  );
+  color = mix(color, mistColor, mistIntensity);
+  alpha = max(alpha, mistIntensity * mistMask * 0.45);
   gl_FragColor = vec4(color, alpha);
     }
   </script>
