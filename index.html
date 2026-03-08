@@ -235,7 +235,62 @@
       float groundZ = uv.y * 25.0;   /* 0 = close foreground, 25 = horizon  */
       vec2  surf    = warpedP;        /* perspective-warped surface UV alias  */
 
-      /* ── CHANGE 1: Water surface texture and depth ────────────────── */
+      /* ── Primary ocean swell ─────────────────────────────────────── */
+      /* Large slow rolling waves seen from above — main visible shapes  */
+      /* that fill the water body. Move slowly and continuously to shore.*/
+      vec2  swellDir = normalize(vec2(-0.60, -0.25));
+      float swellT   = dot(surf * 0.32, swellDir);
+
+      /* Three overlapping swell layers at different scales and speeds   */
+      float swell1 = sin(swellT * 0.90 - u_time * 0.25
+                   + snoise(vec2(surf.x * 0.08, surf.y * 0.06)) * 2.5)
+                   * 0.5 + 0.5;
+      float swell2 = sin(swellT * 1.35 - u_time * 0.34
+                   + surf.x * 0.18
+                   + snoise(vec2(surf.x * 0.12 + 1.7, surf.y * 0.09)) * 2.0)
+                   * 0.5 + 0.5;
+      float swell3 = sin(swellT * 0.65 - u_time * 0.18
+                   - surf.x * 0.14
+                   + snoise(vec2(surf.x * 0.06 + 3.4, surf.y * 0.05)) * 3.0)
+                   * 0.5 + 0.5;
+
+      /* Weighted blend of three swell layers */
+      float swellCombined = swell1 * 0.45 + swell2 * 0.35 + swell3 * 0.20;
+
+      /* Cross swell — secondary waves at a slight angle                 */
+      /* Real ocean always has crossing wave systems — breaks up lines   */
+      vec2  crossDir = normalize(vec2(-0.45, -0.55));
+      float crossT   = dot(surf * 0.28, crossDir);
+      float cross1 = sin(crossT * 1.10 - u_time * 0.29
+                   + snoise(vec2(surf.y * 0.10, surf.x * 0.07 + 5.2)) * 2.2)
+                   * 0.5 + 0.5;
+      float cross2 = sin(crossT * 0.75 - u_time * 0.20
+                   + surf.y * 0.12) * 0.5 + 0.5;
+      float crossCombined = cross1 * 0.60 + cross2 * 0.40;
+
+      /* Combine primary and cross swells                                */
+      float totalSwell = swellCombined * 0.65 + crossCombined * 0.35;
+
+      /* Perspective fade — close swells more visible, horizon compresses*/
+      float swellFade = clamp(1.0 - groundZ * 0.022, 0.15, 1.0);
+      totalSwell = mix(0.5, totalSwell, swellFade);
+
+      /* ── Apply swell as colour variation ────────────────────────────── */
+      /* Peaks lighter (sky reflection), troughs darker (deep water)     */
+      vec3 swellPeak   = vec3(0.16, 0.72, 0.70);  /* light teal          */
+      vec3 swellTrough = vec3(0.02, 0.25, 0.36);  /* deep navy           */
+      color = mix(swellTrough, color,    smoothstep(0.20, 0.48, totalSwell));
+      color = mix(color,       swellPeak, smoothstep(0.52, 0.80, totalSwell) * 0.60);
+
+      /* Moonlight catching the top of each rolling wave */
+      float peakHighlight = smoothstep(0.72, 0.92, totalSwell);
+      color += vec3(0.40, 0.75, 0.78) * peakHighlight * 0.45 * swellFade * crestPulse;
+
+      /* Shadow in deepest troughs — adds sense of depth                 */
+      float troughShadow = smoothstep(0.28, 0.08, totalSwell);
+      color *= (1.0 - troughShadow * 0.35);
+
+      /* ── Water surface texture and depth ─────────────────────────── */
 
       /* Micro-texture: 3-octave high-frequency noise for surface detail */
       float microTex = snoise(surf * 8.5  + u_time * 0.07) * 0.50
@@ -247,8 +302,8 @@
       /* Deep swell: large slow undulations of subsurface light */
       float deepSwell  = snoise(surf * 1.4 + u_time * 0.022) * 0.5 + 0.5;
       float deepSwell2 = snoise(surf * 2.2 + u_time * 0.017 + vec2(5.5, 2.8)) * 0.5 + 0.5;
-      float swellCombined = deepSwell * 0.55 + deepSwell2 * 0.45;
-      color = mix(color * 0.88, color * 1.18, swellCombined);
+      float depthSwellMix = deepSwell * 0.55 + deepSwell2 * 0.45;
+      color = mix(color * 0.88, color * 1.18, depthSwellMix);
 
       /* Subsurface patches: deep teal streaks of light penetrating water */
       float subsurf  = snoise(surf * 3.5 + u_time * 0.031 + vec2(1.2, 8.3)) * 0.5 + 0.5;
@@ -330,11 +385,11 @@
       vec2 bentSurf2 = surf + waveDir * curveMed   * 0.30;
       vec2 bentSurf3 = surf + waveDir * curveSmall * 0.20;
 
-      /* Travel speeds — primary slow, secondary slightly faster          */
-      float speed1 = u_time * 0.12;
-      float speed2 = u_time * 0.18;
-      float speed3 = u_time * 0.09;
-      float speed4 = u_time * 0.22;
+      /* Travel speeds — reduced 35% for deep-ocean swell feel            */
+      float speed1 = u_time * 0.078;
+      float speed2 = u_time * 0.117;
+      float speed3 = u_time * 0.059;
+      float speed4 = u_time * 0.143;
 
       /* 6 wave bands using sin+power for sharp crests, soft troughs      */
       float w1 = pow(sin(dot(bentSurf1, waveDir) * 3.2 - speed1) * 0.5 + 0.5, 4.0);
@@ -360,17 +415,21 @@
       float troughDepth = 1.0 - smoothstep(0.0, 0.45, wavePattern);
       color *= (1.0 - troughDepth * 0.22);
 
+      /* Foam concentrated on swell crests — faint in troughs, bright on peaks */
+      float swellBoost  = smoothstep(0.42, 0.78, totalSwell);
+      float foamOnSwell = 0.30 + swellBoost * 0.70;
+
       /* Pass 1: broad teal glow — leading edge of each wave              */
       float foamGlow = smoothstep(0.20, 0.60, wavePattern);
-      color = mix(color, foamTeal, foamGlow * 0.50);
+      color = mix(color, foamTeal,  foamGlow * 0.42 * perspFoam * foamOnSwell);
 
       /* Pass 2: bright white crest — sharp breaking foam line            */
       float foamCore = smoothstep(0.50, 0.82, wavePattern);
-      color = mix(color, foamWhite, foamCore * 0.88 * crestPulse);
+      color = mix(color, foamWhite, foamCore * 0.78 * crestPulse * perspFoam * foamOnSwell);
 
       /* Pass 3: pure white peak — thinnest brightest top of breaking crest*/
       float foamPeak = smoothstep(0.75, 0.96, wavePattern);
-      color = mix(color, foamPure, foamPeak * 0.95 * crestPulse);
+      color = mix(color, foamPure,  foamPeak * 0.92 * crestPulse * perspFoam * foamOnSwell);
 
       /* Horizon atmospheric fade */
       vec3 horizColor = mix(shallowColor, vec3(0.55, 0.82, 0.82), 0.5);
