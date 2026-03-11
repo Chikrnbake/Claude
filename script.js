@@ -304,7 +304,7 @@ function tick() {
 
   /* ── a) Time ── */
   const elapsed = (performance.now() - startTime) / 1000;
-  fogTime += 0.004;
+  fogTime += 0.00055;
 
   /* ── b) Scroll velocity ── */
   rawSpeed    = Math.abs(scrollY - lastScrollY);
@@ -344,26 +344,29 @@ function tick() {
   }
 
   /* ── g) Fog animation ── */
-  if (fogFar) {
-    const drift  = Math.sin(fogTime * 0.7)  * 18;
-    const lift   = smoothScrollY * 0.06;
-    const breath = 0.85 + Math.sin(fogTime * 1.1) * 0.15;
-    fogFar.style.transform = `translate(${drift.toFixed(1)}px, ${(-lift).toFixed(1)}px)`;
-    fogFar.style.opacity   = breath.toFixed(3);
-  }
+  const fogLift = smoothScrollY * 0.055;
+  const fFarX  = Math.sin(fogTime * 0.55) * 22
+               + Math.sin(fogTime * 0.31) * 10;
+  const fFarY  = Math.sin(fogTime * 0.38) * 7;
+  const fMidX  = Math.sin(fogTime * 0.88 + 1.4) * 32
+               + Math.sin(fogTime * 0.52) * 14;
+  const fMidY  = Math.sin(fogTime * 0.60 + 0.8) * 11;
+  const fNearX = Math.sin(fogTime * 1.20 + 2.6) * 42
+               + Math.sin(fogTime * 0.72) * 18;
+  const fNearY = Math.sin(fogTime * 0.82 + 1.8) * 14;
+  if (fogFar) fogFar.style.transform =
+    `translate(${fFarX.toFixed(2)}px, ${(-fFarY - fogLift).toFixed(2)}px)`;
   if (fogMid) {
-    const drift  = Math.sin(fogTime * 0.5 + 1.2) * 28;
-    const lift   = smoothScrollY * 0.10;
-    const breath = 0.80 + Math.sin(fogTime * 0.9 + 0.8) * 0.20;
-    fogMid.style.transform = `translate(${drift.toFixed(1)}px, ${(-lift).toFixed(1)}px)`;
-    fogMid.style.opacity   = breath.toFixed(3);
+    fogMid.style.transform =
+      `translate(${fMidX.toFixed(2)}px, ${(-fMidY - fogLift * 1.25).toFixed(2)}px)`;
+    fogMid.style.opacity =
+      (Math.sin(fogTime * 0.42) * 0.15 + 0.82).toFixed(3);
   }
   if (fogNear) {
-    const drift  = Math.sin(fogTime * 0.4 + 2.5) * 38;
-    const lift   = smoothScrollY * 0.15;
-    const breath = 0.75 + Math.sin(fogTime * 0.7 + 1.6) * 0.25;
-    fogNear.style.transform = `translate(${drift.toFixed(1)}px, ${(-lift).toFixed(1)}px)`;
-    fogNear.style.opacity   = breath.toFixed(3);
+    fogNear.style.transform =
+      `translate(${fNearX.toFixed(2)}px, ${(-fNearY - fogLift * 1.55).toFixed(2)}px)`;
+    fogNear.style.opacity =
+      (Math.sin(fogTime * 0.62 + 1.0) * 0.18 + 0.72).toFixed(3);
   }
 
   if (!gl) { rafId = requestAnimationFrame(tick); return; }
