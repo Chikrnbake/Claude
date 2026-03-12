@@ -33,7 +33,7 @@ body {
   height: 65%;        /* ocean only occupies lower 65% of screen */
   z-index: 2;
   will-change: transform;
-  transform: translateY(55%);   /* starts hidden below, rises on scroll */
+  transform: translateY(55%) scaleY(-1);   /* starts hidden below, rises on scroll */
 }
 
 /* Layer 3 – Cliffs / mountains foreground (bottom-left quarter) */

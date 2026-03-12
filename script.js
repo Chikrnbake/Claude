@@ -318,7 +318,7 @@ function tick() {
     -20,    /* never rises more than 20% above its natural position */
     RISE_OFFSET * (1 - Math.min(scrollY, RISE_RANGE()) / RISE_RANGE())
   );
-  canvas.style.transform = `translateY(${ty.toFixed(3)}%)`;
+  canvas.style.transform = `translateY(${ty.toFixed(3)}%) scaleY(-1)`;
 
   /* ── d) Mouse parallax on data-speed layers ── */
   smx += (mx - smx) * LERP_MX;
