@@ -194,8 +194,8 @@ resize();
                   below the viewport  (ocean starts low, then rises).
    RISE_RANGE   – scroll pixels needed for the ocean to fully rise.
 */
-const RISE_OFFSET = 30;   /* % */
-const RISE_RANGE  = () => window.innerHeight * 0.60;
+const RISE_OFFSET = 5;    /* % */
+const RISE_RANGE  = () => window.innerHeight * 1.50;
 
 let scrollY     = window.scrollY;
 let lastScrollY = scrollY;
